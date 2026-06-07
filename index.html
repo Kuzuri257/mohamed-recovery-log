@@ -102,6 +102,48 @@
     font-family: 'DM Mono', monospace;
   }
 
+  .header-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 2px;
+  }
+
+  .header-sync {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .header-sync-text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sync-mini-btn {
+    flex-shrink: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-light);
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+  }
+
+  .header .sync-expanded {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
   /* Day navigator */
   .day-nav {
     display: flex;
@@ -185,6 +227,32 @@
     padding: 12px 20px;
   }
 
+  .app-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 0 20px 8px;
+  }
+
+  .tab-btn {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--warm-white);
+    color: var(--ink-light);
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 12px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .tab-btn.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: white;
+  }
+
   .stat-pill {
     display: flex;
     align-items: center;
@@ -256,30 +324,6 @@
   .auth-row {
     display: grid;
     gap: 8px;
-  }
-
-  .sync-compact {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .sync-compact-main {
-    min-width: 0;
-  }
-
-  .sync-compact-title {
-    font-family: 'Fraunces', serif;
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 2px;
-  }
-
-  .sync-compact-copy {
-    color: var(--ink-light);
-    font-size: 12px;
-    line-height: 1.35;
   }
 
   .sync-expanded {
@@ -762,8 +806,32 @@
     <div class="app-name">Recovery<span>Log</span></div>
     <div class="day-badge" id="dayBadge">Day 5</div>
   </div>
-  <div class="header-date" id="headerDate">Sunday, 7 June 2026</div>
-  <div id="syncStatus" style="margin-top:4px"><span style="color:var(--ink-faint);font-size:11px;font-family:'DM Mono',monospace">⏳ Loading your log...</span></div>
+  <div class="header-meta">
+    <div class="header-date" id="headerDate">Sunday, 7 June 2026</div>
+  </div>
+  <div class="header-sync">
+    <div class="header-sync-text">
+      <div id="syncStatus"><span style="color:var(--ink-faint);font-size:11px;font-family:'DM Mono',monospace">⏳ Loading your log...</span></div>
+      <div class="auth-status" id="authStatus">Checking sync...</div>
+    </div>
+    <button class="sync-mini-btn" id="syncToggleBtn" onclick="toggleSyncPanel()">Sign in</button>
+  </div>
+  <div class="sync-expanded hidden" id="syncPanel">
+    <div id="authSignedOut">
+      <div class="auth-row">
+        <input class="form-input" type="email" id="authEmail" placeholder="Email address">
+        <input class="form-input" type="text" id="authCode" inputmode="numeric" placeholder="6-digit code from email">
+      </div>
+      <div class="tool-actions" style="margin-top:10px">
+        <button class="tool-btn primary" onclick="sendMagicLink()">Send code</button>
+        <button class="tool-btn" onclick="verifyCode()">Verify</button>
+      </div>
+    </div>
+    <div id="authSignedIn" class="hidden">
+      <p class="tool-panel-copy" id="authEmailLabel" style="margin-bottom:10px"></p>
+      <button class="tool-btn" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
 </div>
 
 <div class="day-nav" id="dayNav">
@@ -783,40 +851,21 @@
   <div class="stat-pill">💊 <span class="stat-num" id="statMeds">0</span> meds</div>
 </div>
 
-<div class="timeline" id="timeline">
-  <div class="empty-state" id="emptyState">
-    <div class="empty-icon">📋</div>
-    <p>No entries yet.<br>Tap + to log your first event.</p>
+<div class="app-tabs">
+  <button class="tab-btn active" id="logTabBtn" onclick="switchMainTab('log')">Log</button>
+  <button class="tab-btn" id="toolsTabBtn" onclick="switchMainTab('tools')">Tools</button>
+</div>
+
+<div id="logView">
+  <div class="timeline" id="timeline">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">📋</div>
+      <p>No entries yet.<br>Tap + to log your first event.</p>
+    </div>
   </div>
 </div>
 
-<div class="panel-stack">
-  <div class="tool-panel">
-    <div class="sync-compact">
-      <div class="sync-compact-main">
-        <div class="sync-compact-title">Account sync</div>
-        <div class="sync-compact-copy" id="authStatus">Checking sync...</div>
-      </div>
-      <button class="tool-btn primary" id="syncToggleBtn" onclick="toggleSyncPanel()">Sign in</button>
-    </div>
-    <div class="sync-expanded hidden" id="syncPanel">
-      <div id="authSignedOut">
-        <div class="auth-row">
-          <input class="form-input" type="email" id="authEmail" placeholder="Email address">
-          <input class="form-input" type="text" id="authCode" inputmode="numeric" placeholder="6-digit code from email">
-        </div>
-        <div class="tool-actions" style="margin-top:10px">
-          <button class="tool-btn primary" onclick="sendMagicLink()">Send code</button>
-          <button class="tool-btn" onclick="verifyCode()">Verify</button>
-        </div>
-      </div>
-      <div id="authSignedIn" class="hidden">
-        <p class="tool-panel-copy" id="authEmailLabel" style="margin-bottom:10px"></p>
-        <button class="tool-btn" onclick="signOut()">Sign out</button>
-      </div>
-    </div>
-  </div>
-
+<div class="panel-stack hidden" id="toolsView">
   <div class="tool-panel">
     <div class="tool-panel-title">Doctor report</div>
     <p class="tool-panel-copy">Export a readable CSV for appointments or WhatsApp/email sharing.</p>
@@ -896,6 +945,7 @@ let supabaseClient = null;
 let currentUser = null;
 let applyingCloud = false;
 let syncPanelOpen = false;
+let activeMainTab = 'log';
 
 function todayKey() {
   return keyFromBahrainDate(new Date());
@@ -1031,6 +1081,23 @@ function toggleSyncPanel(force) {
   syncPanelOpen = typeof force === 'boolean' ? force : !syncPanelOpen;
   const panel = document.getElementById('syncPanel');
   if (panel) panel.classList.toggle('hidden', !syncPanelOpen);
+}
+
+function switchMainTab(tab) {
+  activeMainTab = tab === 'tools' ? 'tools' : 'log';
+  fabOpen = false;
+  const logView = document.getElementById('logView');
+  const toolsView = document.getElementById('toolsView');
+  const logBtn = document.getElementById('logTabBtn');
+  const toolsBtn = document.getElementById('toolsTabBtn');
+  const quickBar = document.querySelector('.quick-log-bar');
+  const fabOptions = document.getElementById('fabOptions');
+  if (logView) logView.classList.toggle('hidden', activeMainTab !== 'log');
+  if (toolsView) toolsView.classList.toggle('hidden', activeMainTab !== 'tools');
+  if (logBtn) logBtn.classList.toggle('active', activeMainTab === 'log');
+  if (toolsBtn) toolsBtn.classList.toggle('active', activeMainTab === 'tools');
+  if (quickBar) quickBar.classList.toggle('hidden', activeMainTab !== 'log');
+  if (fabOptions) fabOptions.classList.add('hidden');
 }
 
 function updateAuthUI() {
@@ -1174,7 +1241,7 @@ async function applySupabaseUser(user) {
   currentUser = user || null;
   updateAuthUI();
   if (!currentUser) {
-    setAuthStatus('Enter email, tap Send code, then paste the 6-digit code from email.');
+    setAuthStatus('Not signed in');
     setSyncStatus('local');
     return;
   }
