@@ -366,6 +366,35 @@
     display: none;
   }
 
+  .advanced-panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--warm-white);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .advanced-toggle {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 14px;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .advanced-body {
+    border-top: 1px solid var(--border);
+    padding: 14px;
+  }
+
   .timeline-entry {
     display: flex;
     gap: 14px;
@@ -879,13 +908,19 @@
     </div>
   </div>
 
-  <div class="tool-panel">
-    <div class="tool-panel-title">Backup</div>
-    <p class="tool-panel-copy">Keep a manual backup before changing phones or clearing browser data.</p>
-    <div class="tool-actions">
-      <button class="tool-btn primary" onclick="exportBackup()">Export backup</button>
-      <button class="tool-btn" onclick="document.getElementById('backupFile').click()">Import backup</button>
-      <input class="file-input" id="backupFile" type="file" accept="application/json" onchange="importBackup(event)">
+  <div class="advanced-panel">
+    <button class="advanced-toggle" onclick="toggleAdvancedTools()">
+      <span>Advanced</span>
+      <span id="advancedCaret">+</span>
+    </button>
+    <div class="advanced-body hidden" id="advancedTools">
+      <div class="tool-panel-title">Data backup</div>
+      <p class="tool-panel-copy">Usually not needed. Use before major changes or if asked for a recovery file.</p>
+      <div class="tool-actions">
+        <button class="tool-btn primary" onclick="exportBackup()">Export backup</button>
+        <button class="tool-btn" onclick="document.getElementById('backupFile').click()">Import backup</button>
+        <input class="file-input" id="backupFile" type="file" accept="application/json" onchange="importBackup(event)">
+      </div>
     </div>
   </div>
 </div>
@@ -1098,6 +1133,15 @@ function switchMainTab(tab) {
   if (toolsBtn) toolsBtn.classList.toggle('active', activeMainTab === 'tools');
   if (quickBar) quickBar.classList.toggle('hidden', activeMainTab !== 'log');
   if (fabOptions) fabOptions.classList.add('hidden');
+}
+
+function toggleAdvancedTools() {
+  const body = document.getElementById('advancedTools');
+  const caret = document.getElementById('advancedCaret');
+  if (!body) return;
+  const willOpen = body.classList.contains('hidden');
+  body.classList.toggle('hidden', !willOpen);
+  if (caret) caret.textContent = willOpen ? '-' : '+';
 }
 
 function updateAuthUI() {
