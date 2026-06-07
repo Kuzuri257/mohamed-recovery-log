@@ -310,7 +310,7 @@
     background: var(--warm-white);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 14px;
+    padding: 12px;
     box-shadow: var(--shadow-sm);
   }
 
@@ -319,7 +319,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 
   .ai-panel-title {
@@ -333,6 +333,7 @@
     color: var(--ink-light);
     font-size: 12px;
     line-height: 1.4;
+    max-width: 52ch;
   }
 
   .ai-actions {
@@ -346,6 +347,10 @@
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 8px;
+  }
+
+  .ai-question-row .form-input {
+    min-width: 0;
   }
 
   .ai-result {
@@ -407,6 +412,12 @@
     font-weight: 700;
     padding: 4px 8px;
     margin-top: 8px;
+  }
+
+  .tool-btn:disabled,
+  .entry-ai-btn:disabled {
+    opacity: 0.55;
+    cursor: default;
   }
 
   .ai-error {
@@ -926,7 +937,7 @@
     }
     .day-nav { border-radius: 0 0 var(--radius) var(--radius); }
     .timeline {
-      max-width: 680px;
+      max-width: 760px;
       margin: 0 auto;
       width: 100%;
     }
@@ -936,7 +947,7 @@
       margin-right: auto;
     }
     .ai-panel {
-      max-width: 680px;
+      max-width: 760px;
       margin-left: auto;
       margin-right: auto;
     }
@@ -1014,14 +1025,14 @@
     <div class="ai-panel-header">
       <div>
         <div class="ai-panel-title">Recovery AI</div>
-        <p class="ai-panel-copy">Uses today’s log plus recent history. Summaries, questions, and entry feedback run through Claude server-side.</p>
+        <p class="ai-panel-copy">Uses today’s log plus recent history for summaries, questions, and entry feedback.</p>
       </div>
     </div>
     <div class="ai-actions">
       <button class="tool-btn primary" id="aiSummaryBtn" onclick="generateAISummary()">Summarize today</button>
     </div>
     <div class="ai-question-row">
-      <input class="form-input" id="aiQuestion" type="text" placeholder="Ask about today, trends, food, BM, sleep...">
+      <input class="form-input" id="aiQuestion" type="text" placeholder="Ask AI about today...">
       <button class="tool-btn" id="aiAskBtn" onclick="askAIQuestion()">Ask</button>
     </div>
     <div id="aiSummaryResult"></div>
