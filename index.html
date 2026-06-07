@@ -601,7 +601,7 @@
     background: var(--warm-white);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 12px 14px;
+    padding: 12px 70px 12px 14px;
     margin-bottom: 10px;
     box-shadow: var(--shadow-sm);
     position: relative;
@@ -654,21 +654,30 @@
   .tag-note { background: var(--accent-slate-light); color: var(--accent-slate); }
   .tag-sleep { background: #F0F4FF; color: #4A60A0; }
 
-  .entry-delete {
+  .entry-actions {
     position: absolute;
     top: 10px;
     right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .entry-action {
     background: none;
     border: none;
     color: var(--ink-faint);
-    font-size: 14px;
+    font-size: 12px;
+    font-family: 'Instrument Sans', sans-serif;
+    font-weight: 700;
     cursor: pointer;
-    padding: 2px 5px;
+    padding: 3px 5px;
     border-radius: 4px;
-    opacity: 0.5;
+    opacity: 0.65;
     transition: opacity 0.15s;
   }
-  .entry-delete:hover { opacity: 1; color: var(--accent-rose); }
+  .entry-action:hover { opacity: 1; color: var(--accent-teal); }
+  .entry-action.delete:hover { color: var(--accent-rose); }
 
   .empty-state {
     text-align: center;
@@ -1180,6 +1189,7 @@ let currentUser = null;
 let applyingCloud = false;
 let syncPanelOpen = false;
 let activeMainTab = 'log';
+let editingEntryId = null;
 
 function todayKey() {
   return keyFromBahrainDate(new Date());
@@ -1760,7 +1770,10 @@ function buildEntryHTML(e, i) {
     <div class="timeline-entry">
       <div class="entry-icon-wrap ${escapeHTML(iconClass)}">${escapeHTML(icons[e.type] || '•')}</div>
       <div class="entry-body">
-        <button class="entry-delete" data-entry-id="${escapeHTML(e.id)}" onclick="deleteEntryFromButton(this)">✕</button>
+        <div class="entry-actions">
+          <button class="entry-action" data-entry-id="${escapeHTML(e.id)}" onclick="editEntryFromButton(this)">Edit</button>
+          <button class="entry-action delete" data-entry-id="${escapeHTML(e.id)}" onclick="deleteEntryFromButton(this)">✕</button>
+        </div>
         <div class="entry-time">${escapeHTML(e.time)}</div>
         <div class="entry-title">${escapeHTML(title)}</div>
         ${tagsHTML ? `<div class="entry-tags">${tagsHTML}</div>` : ''}
@@ -1801,14 +1814,16 @@ function toggleFab() {
 }
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
-function openModal(type) {
+function openModal(type, entryId = null) {
   fabOpen = false;
   document.getElementById('fabOptions').classList.add('hidden');
   document.getElementById('fabMain').classList.remove('open');
 
-  const timeStr = currentBahrainTime();
+  editingEntryId = entryId;
+  const editingEntry = entryId ? (allDays[currentDay] || []).find(entry => entry.id === entryId) : null;
+  const timeStr = editingEntry ? editingEntry.time : currentBahrainTime();
   const titles = { poop:'🚽 Bowel movement', food:'🍽️ Food / drink', med:'💊 Medication', symptom:'😣 Symptom', note:'📝 Quick note', sleep:'🌙 Sleep' };
-  document.getElementById('modalTitle').textContent = titles[type];
+  document.getElementById('modalTitle').textContent = `${editingEntry ? 'Edit' : ''} ${titles[type]}`.trim();
 
   const body = document.getElementById('modalBody');
   body.innerHTML = buildForm(type, timeStr);
@@ -1841,6 +1856,78 @@ function openModal(type) {
       if (dose) dose.value = btn.dataset.dose || '';
     });
   });
+
+  if (editingEntry) {
+    fillForm(type, editingEntry);
+    const submit = body.querySelector('.btn-submit');
+    if (submit) submit.textContent = 'Save changes';
+  }
+}
+
+function setFieldValue(id, value) {
+  const field = document.getElementById(id);
+  if (field) field.value = value || '';
+}
+
+function selectChip(group, value) {
+  if (!value) return;
+  const chips = Array.from(document.querySelectorAll(`.chip[data-group="${group}"]`));
+  const match = chips.find(chip => chip.textContent === value);
+  if (match) match.classList.add('selected');
+}
+
+function selectUrgency(value) {
+  if (!value) return;
+  const buttons = Array.from(document.querySelectorAll('.urgency-btn'));
+  const match = buttons.find(button => button.textContent === String(value));
+  if (match) {
+    match.classList.add(`sel-${value}`);
+    match.dataset.selected = 'true';
+  }
+}
+
+function fillForm(type, entry) {
+  const d = entry.data || {};
+  setFieldValue('f_time', entry.time);
+  if (type === 'poop') {
+    selectChip('consistency', d.consistency);
+    selectUrgency(d.urgency);
+    selectChip('gas', d.gas);
+    selectChip('blood', d.blood);
+    setFieldValue('f_notes', d.notes);
+  } else if (type === 'food') {
+    setFieldValue('f_item', d.item);
+    setFieldValue('f_amount', d.amount);
+    setFieldValue('f_fluid_ml', d.fluid_ml);
+    selectChip('ftype', d.ftype);
+    selectChip('tolerated', d.tolerated);
+    setFieldValue('f_notes', d.notes);
+  } else if (type === 'med') {
+    setFieldValue('f_name', d.name);
+    setFieldValue('f_dose', d.dose);
+    setFieldValue('f_notes', d.notes);
+  } else if (type === 'symptom') {
+    const knownSymptoms = ['Perianal irritation','Bloating','Nausea','Cramping','Fatigue','Pain (wound)','Urgency','Tenesmus','Other'];
+    if (knownSymptoms.includes(d.symptom)) selectChip('symptom', d.symptom);
+    else {
+      selectChip('symptom', 'Other');
+      setFieldValue('f_custom', d.symptom);
+    }
+    selectUrgency(d.severity);
+    setFieldValue('f_notes', d.notes);
+  } else if (type === 'sleep') {
+    setFieldValue('f_bedtime', d.bedtime);
+    setFieldValue('f_wakeup', d.wakeup);
+    setFieldValue('f_total', d.total);
+    setFieldValue('f_interruptions', d.interruptions);
+    setFieldValue('f_recovery', d.whoop_recovery);
+    setFieldValue('f_sleep_score', d.whoop_sleep_score);
+    setFieldValue('f_hrv', d.whoop_hrv);
+    setFieldValue('f_rhr', d.whoop_rhr);
+    setFieldValue('f_notes', d.notes);
+  } else if (type === 'note') {
+    setFieldValue('f_text', d.text);
+  }
 }
 
 function buildForm(type, timeStr) {
@@ -2037,6 +2124,7 @@ function buildForm(type, timeStr) {
 
 function closeModal() {
   document.getElementById('modalOverlay').classList.add('hidden');
+  editingEntryId = null;
 }
 
 function closeOnOverlay(e) {
@@ -2054,7 +2142,7 @@ function getUrgency() {
 }
 
 function submitEntry(type) {
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const id = editingEntryId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const timeEl = document.getElementById('f_time');
   const time = timeEl ? timeEl.value : currentBahrainTime();
   let data = {};
@@ -2107,11 +2195,23 @@ function submitEntry(type) {
 
   if (!allDays[currentDay]) allDays[currentDay] = [];
   const entry = { id, type, time, data };
-  allDays[currentDay].push(entry);
+  const existingIdx = allDays[currentDay].findIndex(existing => existing.id === id);
+  if (existingIdx >= 0) allDays[currentDay][existingIdx] = entry;
+  else allDays[currentDay].push(entry);
   save();
   pushEntryToCloud(currentDay, entry);
   closeModal();
   renderAll();
+}
+
+function editEntry(id) {
+  const entry = (allDays[currentDay] || []).find(item => item.id === id);
+  if (!entry) return;
+  openModal(entry.type, id);
+}
+
+function editEntryFromButton(button) {
+  editEntry(button.dataset.entryId || '');
 }
 
 function deleteEntry(id) {
