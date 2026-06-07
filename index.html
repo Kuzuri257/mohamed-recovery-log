@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#FAF7F2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RecoveryLog">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Mohamed's Recovery Log</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="supabase-config.js"></script>
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FFFEF9;
+    --ink: #1C1A17;
+    --ink-light: #4A4640;
+    --ink-faint: #9A948C;
+    --border: #E8E2D9;
+    --border-strong: #C8BFB2;
+    --accent-teal: #2D7D6F;
+    --accent-teal-light: #E8F4F1;
+    --accent-amber: #C17B2A;
+    --accent-amber-light: #FBF3E8;
+    --accent-rose: #B85C5C;
+    --accent-rose-light: #F9EDED;
+    --accent-violet: #6B5B8A;
+    --accent-violet-light: #F0EDF6;
+    --accent-slate: #4A6580;
+    --accent-slate-light: #EDF1F5;
+    --shadow-sm: 0 1px 3px rgba(28,26,23,0.06), 0 1px 2px rgba(28,26,23,0.04);
+    --shadow-md: 0 4px 12px rgba(28,26,23,0.08), 0 2px 4px rgba(28,26,23,0.04);
+    --shadow-lg: 0 12px 32px rgba(28,26,23,0.10), 0 4px 8px rgba(28,26,23,0.06);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Instrument Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 0 0 96px 0;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header {
+    background: var(--warm-white);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 20px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .app-name {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+  }
+
+  .app-name span {
+    color: var(--accent-teal);
+  }
+
+  .day-badge {
+    background: var(--accent-teal);
+    color: white;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .header-date {
+    font-size: 13px;
+    color: var(--ink-faint);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Day navigator */
+  .day-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--warm-white);
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+
+  .day-arrow {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    background: transparent;
+    font-size: 16px;
+    color: var(--ink-light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+  .day-arrow:hover:not(:disabled) {
+    border-color: var(--ink);
+    color: var(--ink);
+    background: var(--cream);
+  }
+  .day-arrow:disabled { opacity: 0.25; cursor: default; }
+
+  .day-center {
+    flex: 1;
+    text-align: center;
+  }
+
+  .day-center-label {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    display: block;
+  }
+
+  .day-center-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+    display: block;
+    margin-top: 1px;
+  }
+
+  .day-dots {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 6px;
+  }
+
+  .day-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--border-strong);
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .day-dot.active {
+    background: var(--ink);
+    width: 14px;
+    border-radius: 3px;
+  }
+
+  /* Summary strip */
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px 20px;
+  }
+
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--ink-light);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .stat-pill .stat-num {
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    color: var(--ink);
+    font-size: 13px;
+  }
+
+  /* Timeline */
+  .timeline {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .tool-panel {
+    margin: 0 20px 18px;
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .tool-panel-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .tool-panel-copy {
+    color: var(--ink-light);
+    font-size: 13px;
+    line-height: 1.45;
+    margin-bottom: 12px;
+  }
+
+  .tool-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .panel-stack {
+    display: grid;
+    gap: 12px;
+    margin: 0 20px 18px;
+  }
+
+  .panel-stack .tool-panel {
+    margin: 0;
+  }
+
+  .auth-row {
+    display: grid;
+    gap: 8px;
+  }
+
+  .auth-status {
+    color: var(--ink-faint);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    margin-top: 8px;
+  }
+
+  .date-range {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .tool-btn {
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 12px;
+  }
+
+  .tool-btn.primary {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: white;
+  }
+
+  .file-input {
+    display: none;
+  }
+
+  .timeline-entry {
+    display: flex;
+    gap: 14px;
+    position: relative;
+    padding-bottom: 4px;
+  }
+
+  .timeline-entry:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 36px;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .entry-icon-wrap {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    position: relative;
+    z-index: 1;
+  }
+
+  .entry-body {
+    flex: 1;
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+  }
+
+  .entry-body::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 12px;
+    width: 10px;
+    height: 10px;
+    background: var(--warm-white);
+    border-left: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    transform: rotate(45deg);
+  }
+
+  .entry-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-bottom: 4px;
+  }
+
+  .entry-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .entry-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .tag-poop { background: var(--accent-amber-light); color: var(--accent-amber); }
+  .tag-food { background: var(--accent-teal-light); color: var(--accent-teal); }
+  .tag-med { background: var(--accent-violet-light); color: var(--accent-violet); }
+  .tag-symptom { background: var(--accent-rose-light); color: var(--accent-rose); }
+  .tag-note { background: var(--accent-slate-light); color: var(--accent-slate); }
+  .tag-sleep { background: #F0F4FF; color: #4A60A0; }
+
+  .entry-delete {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+  }
+  .entry-delete:hover { opacity: 1; color: var(--accent-rose); }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--ink-faint);
+  }
+
+  .empty-state .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; font-family: 'Fraunces', serif; font-style: italic; }
+
+  /* FAB */
+  .fab-wrap {
+    position: fixed;
+    bottom: 88px;
+    right: 20px;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+  }
+
+  .fab-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+    transition: all 0.2s ease;
+  }
+
+  .fab-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 10px 16px 10px 12px;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    font-family: 'Instrument Sans', sans-serif;
+  }
+
+  .fab-option:hover { box-shadow: var(--shadow-lg); transform: translateX(-2px); }
+  .fab-option span:first-child { font-size: 18px; }
+
+  .fab-main {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: white;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    line-height: 1;
+    display: none;
+  }
+
+  .fab-main:hover { background: var(--accent-teal); transform: scale(1.05); }
+  .fab-main.open { transform: rotate(45deg); background: var(--accent-rose); }
+
+  .quick-log-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 190;
+    background: rgba(255,254,249,0.96);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(28,26,23,0.06);
+    padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .quick-log-inner {
+    max-width: 520px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .quick-log-btn {
+    min-height: 48px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--warm-white);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .quick-log-btn span {
+    font-size: 17px;
+    line-height: 1;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28,26,23,0.5);
+    z-index: 300;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+    padding: 0;
+  }
+
+  .modal {
+    background: var(--warm-white);
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 24px 20px 40px;
+    box-shadow: var(--shadow-lg);
+    scrollbar-width: none;
+  }
+  .modal::-webkit-scrollbar { display: none; }
+
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border-strong);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .modal-title {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: 'Instrument Sans', sans-serif;
+    color: var(--ink);
+    background: var(--cream);
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--accent-teal);
+    background: var(--warm-white);
+  }
+
+  .form-textarea { resize: vertical; min-height: 70px; }
+
+  .chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border-strong);
+    background: transparent;
+    font-size: 13px;
+    font-family: 'Instrument Sans', sans-serif;
+    color: var(--ink-light);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .chip.selected {
+    border-color: var(--accent-teal);
+    background: var(--accent-teal-light);
+    color: var(--accent-teal);
+    font-weight: 600;
+  }
+
+  .urgency-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .urgency-btn {
+    flex: 1;
+    padding: 8px 4px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border-strong);
+    background: transparent;
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .urgency-btn.sel-1 { border-color: #2D7D6F; background: #E8F4F1; color: #2D7D6F; }
+  .urgency-btn.sel-2 { border-color: #6B8A3A; background: #F0F5E8; color: #6B8A3A; }
+  .urgency-btn.sel-3 { border-color: #C17B2A; background: #FBF3E8; color: #C17B2A; }
+  .urgency-btn.sel-4 { border-color: #B85C5C; background: #F9EDED; color: #B85C5C; }
+  .urgency-btn.sel-5 { border-color: #8B2252; background: #F9E8F0; color: #8B2252; }
+
+  .btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: var(--ink);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'Instrument Sans', sans-serif;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.15s;
+  }
+  .btn-submit:hover { background: var(--accent-teal); }
+
+  .btn-cancel {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    color: var(--ink-faint);
+    border: none;
+    font-size: 14px;
+    font-family: 'Instrument Sans', sans-serif;
+    cursor: pointer;
+    margin-top: 6px;
+  }
+
+  /* Sleep section */
+  .sleep-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* Icon colors for timeline */
+  .icon-poop { background: var(--accent-amber-light); }
+  .icon-food { background: var(--accent-teal-light); }
+  .icon-med { background: var(--accent-violet-light); }
+  .icon-symptom { background: var(--accent-rose-light); }
+  .icon-note { background: var(--accent-slate-light); }
+  .icon-sleep { background: #F0F4FF; }
+
+  .divider { height: 1px; background: var(--border); margin: 4px 0 14px; }
+
+  .hidden { display: none !important; }
+
+  @media (min-width: 600px) {
+    .modal { border-radius: 20px; margin: 20px; max-height: 85vh; }
+    .modal-overlay { align-items: center; }
+    .summary-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .quick-log-inner { max-width: 620px; }
+  }
+
+  @media (min-width: 760px) {
+    body { padding-bottom: 112px; }
+    .header,
+    .day-nav {
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+    }
+    .day-nav { border-radius: 0 0 var(--radius) var(--radius); }
+    .timeline {
+      max-width: 680px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .tool-panel {
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .panel-stack {
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .panel-stack .tool-panel {
+      max-width: none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+<div class="header">
+  <div class="header-top">
+    <div class="app-name">Recovery<span>Log</span></div>
+    <div class="day-badge" id="dayBadge">Day 5</div>
+  </div>
+  <div class="header-date" id="headerDate">Sunday, 7 June 2026</div>
+  <div id="syncStatus" style="margin-top:4px"><span style="color:var(--ink-faint);font-size:11px;font-family:'DM Mono',monospace">⏳ Loading your log...</span></div>
+</div>
+
+<div class="day-nav" id="dayNav">
+  <button class="day-arrow" id="prevBtn" onclick="goDay(-1)">←</button>
+  <div class="day-center">
+    <span class="day-center-label" id="navDayLabel">Day 5</span>
+    <span class="day-center-sub" id="navDayDate">7 Jun 2026</span>
+    <div class="day-dots" id="dayDots"></div>
+  </div>
+  <button class="day-arrow" id="nextBtn" onclick="goDay(1)">→</button>
+</div>
+
+<div class="summary-strip" id="summaryStrip">
+  <div class="stat-pill">🚽 <span class="stat-num" id="statBM">0</span> BMs</div>
+  <div class="stat-pill">🍽️ <span class="stat-num" id="statFood">0</span> meals</div>
+  <div class="stat-pill">💧 <span class="stat-num" id="statFluids">0</span> ml fluids</div>
+  <div class="stat-pill">💊 <span class="stat-num" id="statMeds">0</span> meds</div>
+</div>
+
+<div class="timeline" id="timeline">
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon">📋</div>
+    <p>No entries yet.<br>Tap + to log your first event.</p>
+  </div>
+</div>
+
+<div class="panel-stack">
+  <div class="tool-panel">
+    <div class="tool-panel-title">Sync</div>
+    <p class="tool-panel-copy">Sign in with email to sync safely between iPhone and iPad.</p>
+    <div id="authSignedOut">
+      <div class="auth-row">
+        <input class="form-input" type="email" id="authEmail" placeholder="Email address">
+        <input class="form-input" type="text" id="authCode" inputmode="numeric" placeholder="6-digit code from email">
+      </div>
+      <div class="tool-actions" style="margin-top:10px">
+        <button class="tool-btn primary" onclick="sendMagicLink()">Send code</button>
+        <button class="tool-btn" onclick="verifyCode()">Verify</button>
+      </div>
+    </div>
+    <div id="authSignedIn" class="hidden">
+      <p class="tool-panel-copy" id="authEmailLabel" style="margin-bottom:10px"></p>
+      <button class="tool-btn" onclick="signOut()">Sign out</button>
+    </div>
+    <div class="auth-status" id="authStatus">Checking sync...</div>
+  </div>
+
+  <div class="tool-panel">
+    <div class="tool-panel-title">Doctor report</div>
+    <p class="tool-panel-copy">Export a readable CSV for appointments or WhatsApp/email sharing.</p>
+    <div class="date-range">
+      <input class="form-input" type="date" id="reportStart">
+      <input class="form-input" type="date" id="reportEnd">
+    </div>
+    <div class="tool-actions">
+      <button class="tool-btn primary" onclick="exportDoctorCSV()">Export CSV</button>
+      <button class="tool-btn" onclick="setReportToToday()">Today</button>
+    </div>
+  </div>
+
+  <div class="tool-panel">
+    <div class="tool-panel-title">Backup</div>
+    <p class="tool-panel-copy">Keep a manual backup before changing phones or clearing browser data.</p>
+    <div class="tool-actions">
+      <button class="tool-btn primary" onclick="exportBackup()">Export backup</button>
+      <button class="tool-btn" onclick="document.getElementById('backupFile').click()">Import backup</button>
+      <input class="file-input" id="backupFile" type="file" accept="application/json" onchange="importBackup(event)">
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- FAB -->
+<div class="fab-wrap">
+  <div class="fab-options hidden" id="fabOptions">
+    <button class="fab-option" onclick="openModal('sleep')"><span>🌙</span> Log sleep</button>
+    <button class="fab-option" onclick="openModal('note')"><span>📝</span> Quick note</button>
+    <button class="fab-option" onclick="openModal('symptom')"><span>😣</span> Symptom</button>
+    <button class="fab-option" onclick="openModal('med')"><span>💊</span> Medication</button>
+    <button class="fab-option" onclick="openModal('food')"><span>🍽️</span> Food / drink</button>
+    <button class="fab-option" onclick="openModal('poop')"><span>🚽</span> Bowel movement</button>
+  </div>
+  <button class="fab-main" id="fabMain" onclick="toggleFab()">+</button>
+</div>
+
+<div class="quick-log-bar">
+  <div class="quick-log-inner">
+    <button class="quick-log-btn" onclick="openModal('poop')"><span>🚽</span>BM</button>
+    <button class="quick-log-btn" onclick="openModal('food')"><span>🍽️</span>Food</button>
+    <button class="quick-log-btn" onclick="openModal('symptom')"><span>😣</span>Symptom</button>
+    <button class="quick-log-btn" onclick="toggleFab()"><span>＋</span>More</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay hidden" id="modalOverlay" onclick="closeOnOverlay(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">Log entry</div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+const APP_TIME_ZONE = 'Asia/Bahrain';
+const BAHRAIN_OFFSET_MINUTES = 3 * 60;
+const SURGERY_DATE_KEY = '2026-06-02';
+const START_DATE_KEY = '2026-06-07';
+const STORAGE_KEY = 'recovery-log-v2';
+const LEGACY_STORAGE_KEY = 'recovery-log-cache';
+const DELETED_STORAGE_KEY = 'recovery-log-deleted-v1';
+const MED_PRESETS = [
+  { name: 'Paracetamol', dose: '500mg' },
+  { name: 'Imodium', dose: '1 tablet' },
+  { name: 'Electrolytes', dose: '1 sachet' }
+];
+
+let allDays = {}; // { 'YYYY-MM-DD': [entries] }
+let deletedEntryIds = [];
+let currentDay = todayKey();
+let fabOpen = false;
+let supabaseClient = null;
+let currentUser = null;
+let applyingCloud = false;
+
+function todayKey() {
+  return keyFromBahrainDate(new Date());
+}
+
+function keyFromBahrainDate(date) {
+  const bahrainClock = new Date(date.getTime() + BAHRAIN_OFFSET_MINUTES * 60000);
+  return bahrainClock.toISOString().slice(0, 10);
+}
+
+function utcDayFromKey(dateKey) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+function dateInBahrainFromKey(dateKey) {
+  return new Date(utcDayFromKey(dateKey) - BAHRAIN_OFFSET_MINUTES * 60000);
+}
+
+function dayNumber(dateKey) {
+  const diff = Math.round((utcDayFromKey(dateKey) - utcDayFromKey(SURGERY_DATE_KEY)) / 86400000);
+  return diff + 1;
+}
+
+function formatBahrainDate(dateKey, options) {
+  return dateInBahrainFromKey(dateKey).toLocaleDateString('en-GB', {
+    timeZone: APP_TIME_ZONE,
+    ...options
+  });
+}
+
+function formatFullDate(dateKey) {
+  return formatBahrainDate(dateKey, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function currentBahrainTime() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: APP_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(new Date());
+  const hour = parts.find(part => part.type === 'hour')?.value || '00';
+  const minute = parts.find(part => part.type === 'minute')?.value || '00';
+  return `${hour}:${minute}`;
+}
+
+function appRedirectUrl() {
+  return window.location.href.split('#')[0].split('?')[0];
+}
+
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[ch]));
+}
+
+// ─── Storage ─────────────────────────────────────────────────────────────────
+function saveLocal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      version: 2,
+      savedAt: new Date().toISOString(),
+      days: allDays
+    }));
+    localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(deletedEntryIds));
+    return true;
+  } catch(e) {
+    setSyncStatus('error');
+    return false;
+  }
+}
+
+function loadLocal() {
+  try {
+    const deletedRaw = localStorage.getItem(DELETED_STORAGE_KEY);
+    if (deletedRaw) deletedEntryIds = JSON.parse(deletedRaw) || [];
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      allDays = parsed.days || {};
+      return;
+    }
+    const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacyRaw) {
+      allDays = JSON.parse(legacyRaw);
+      saveLocal();
+    }
+  } catch(e) { allDays = {}; }
+}
+
+// Show sync status
+function setSyncStatus(state) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  const states = {
+    saving: { icon: '⏳', text: 'Saving...', color: 'var(--ink-faint)' },
+    saved:  { icon: '✅', text: 'Saved on this device', color: 'var(--accent-teal)' },
+    synced: { icon: '✅', text: 'Synced to Supabase', color: 'var(--accent-teal)' },
+    syncwait: { icon: '⏳', text: 'Syncing...', color: 'var(--ink-faint)' },
+    local: { icon: '📱', text: 'Local mode', color: 'var(--ink-faint)' },
+    error:  { icon: '⚠️', text: 'Save failed — export backup now', color: 'var(--accent-amber)' },
+    loading:{ icon: '⏳', text: 'Loading your log...', color: 'var(--ink-faint)' },
+  };
+  const s = states[state] || states.saved;
+  el.innerHTML = `<span style="color:${s.color};font-size:11px;font-family:'DM Mono',monospace">${s.icon} ${s.text}</span>`;
+}
+
+function save() {
+  setSyncStatus('saving');
+  setSyncStatus(saveLocal() ? 'saved' : 'error');
+}
+
+function load() {
+  loadLocal();
+  if (!allDays[currentDay]) allDays[currentDay] = [];
+  renderAll();
+  setSyncStatus('saved');
+  setReportToToday();
+}
+
+// ─── Supabase sync ────────────────────────────────────────────────────────────
+function setAuthStatus(message) {
+  const el = document.getElementById('authStatus');
+  if (el) el.textContent = message;
+}
+
+function updateAuthUI() {
+  const signedOut = document.getElementById('authSignedOut');
+  const signedIn = document.getElementById('authSignedIn');
+  const emailLabel = document.getElementById('authEmailLabel');
+  if (!signedOut || !signedIn) return;
+  signedOut.classList.toggle('hidden', !!currentUser);
+  signedIn.classList.toggle('hidden', !currentUser);
+  if (emailLabel && currentUser) emailLabel.textContent = `Signed in as ${currentUser.email || 'Mohamed'}`;
+}
+
+async function loadSyncConfig() {
+  if (window.RECOVERY_SUPABASE_CONFIG?.supabaseUrl && window.RECOVERY_SUPABASE_CONFIG?.supabaseAnonKey) {
+    return window.RECOVERY_SUPABASE_CONFIG;
+  }
+  try {
+    const resp = await fetch('/api/config');
+    if (!resp.ok) return null;
+    const cfg = await resp.json();
+    if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) return null;
+    return cfg;
+  } catch(e) {
+    return null;
+  }
+}
+
+function entriesAsRows() {
+  const rows = [];
+  Object.keys(allDays).forEach(dateKey => {
+    (allDays[dateKey] || []).forEach(entry => {
+      if (!entry || !entry.id || deletedEntryIds.includes(entry.id)) return;
+      rows.push({
+        id: entry.id,
+        user_id: currentUser.id,
+        date_key: dateKey,
+        type: entry.type,
+        entry_time: entry.time,
+        data: entry.data || {},
+        updated_at: new Date().toISOString()
+      });
+    });
+  });
+  return rows;
+}
+
+function rowToEntry(row) {
+  return {
+    id: row.id,
+    type: row.type,
+    time: row.entry_time,
+    data: row.data || {}
+  };
+}
+
+function mergeRows(rows) {
+  rows.forEach(row => {
+    if (!row || deletedEntryIds.includes(row.id)) return;
+    if (!allDays[row.date_key]) allDays[row.date_key] = [];
+    const entries = allDays[row.date_key];
+    const idx = entries.findIndex(entry => entry.id === row.id);
+    const incoming = rowToEntry(row);
+    if (idx >= 0) entries[idx] = incoming;
+    else entries.push(incoming);
+  });
+  saveLocal();
+  renderAll();
+}
+
+async function loadCloudEntries() {
+  if (!supabaseClient || !currentUser) return;
+  const result = await supabaseClient
+    .from('recovery_entries')
+    .select('id,date_key,type,entry_time,data,updated_at')
+    .eq('user_id', currentUser.id)
+    .order('date_key', { ascending: true })
+    .order('entry_time', { ascending: true });
+  if (result.error) throw result.error;
+  mergeRows(result.data || []);
+}
+
+async function uploadLocalEntries() {
+  if (!supabaseClient || !currentUser) return;
+  const rows = entriesAsRows();
+  for (let i = 0; i < rows.length; i += 100) {
+    const chunk = rows.slice(i, i + 100);
+    if (!chunk.length) continue;
+    const result = await supabaseClient.from('recovery_entries').upsert(chunk, { onConflict: 'user_id,id' });
+    if (result.error) throw result.error;
+  }
+}
+
+async function pushEntryToCloud(dateKey, entry) {
+  if (!supabaseClient || !currentUser || applyingCloud) return;
+  const row = {
+    id: entry.id,
+    user_id: currentUser.id,
+    date_key: dateKey,
+    type: entry.type,
+    entry_time: entry.time,
+    data: entry.data || {},
+    updated_at: new Date().toISOString()
+  };
+  setSyncStatus('syncwait');
+  const result = await supabaseClient.from('recovery_entries').upsert(row, { onConflict: 'user_id,id' });
+  setSyncStatus(result.error ? 'error' : 'synced');
+  if (result.error) setAuthStatus(`Sync error: ${result.error.message}`);
+}
+
+async function deleteEntryFromCloud(id) {
+  if (!supabaseClient || !currentUser) return;
+  setSyncStatus('syncwait');
+  const result = await supabaseClient
+    .from('recovery_entries')
+    .delete()
+    .eq('user_id', currentUser.id)
+    .eq('id', id);
+  setSyncStatus(result.error ? 'error' : 'synced');
+  if (result.error) setAuthStatus(`Delete sync error: ${result.error.message}`);
+}
+
+async function initSupabaseSync() {
+  const cfg = await loadSyncConfig();
+  if (!cfg || !window.supabase) {
+    setSyncStatus('local');
+    setAuthStatus('Cloud sync is not configured yet. Add Supabase env vars when deploying.');
+    updateAuthUI();
+    return;
+  }
+  supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  const sessionResult = await supabaseClient.auth.getSession();
+  await applySupabaseUser(sessionResult.data?.session?.user || null);
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    applySupabaseUser(session?.user || null);
+  });
+}
+
+async function applySupabaseUser(user) {
+  currentUser = user || null;
+  updateAuthUI();
+  if (!currentUser) {
+    setAuthStatus('Enter email, tap Send code, then paste the 6-digit code from email.');
+    setSyncStatus('local');
+    return;
+  }
+  setAuthStatus('Syncing local entries to Supabase...');
+  setSyncStatus('syncwait');
+  try {
+    applyingCloud = true;
+    await uploadLocalEntries();
+    await loadCloudEntries();
+    applyingCloud = false;
+    setAuthStatus('Synced. New entries will update across devices.');
+    setSyncStatus('synced');
+  } catch(e) {
+    applyingCloud = false;
+    setAuthStatus(`Sync error: ${e.message}`);
+    setSyncStatus('error');
+  }
+}
+
+async function sendMagicLink() {
+  if (!supabaseClient) {
+    setAuthStatus('Supabase is not configured yet.');
+    return;
+  }
+  const email = document.getElementById('authEmail').value.trim();
+  if (!email) {
+    setAuthStatus('Enter an email first.');
+    return;
+  }
+  const result = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: appRedirectUrl() }
+  });
+  setAuthStatus(result.error ? `Sign-in error: ${result.error.message}` : 'Code sent. Open the email and paste the 6-digit code here.');
+}
+
+async function verifyCode() {
+  if (!supabaseClient) {
+    setAuthStatus('Supabase is not configured yet.');
+    return;
+  }
+  const email = document.getElementById('authEmail').value.trim();
+  const token = document.getElementById('authCode').value.trim();
+  if (!email || token.length < 6) {
+    setAuthStatus('Enter email and the 6-digit code.');
+    return;
+  }
+  const result = await supabaseClient.auth.verifyOtp({ email, token, type: 'email' });
+  if (result.error) setAuthStatus(`Code error: ${result.error.message}`);
+  else document.getElementById('authCode').value = '';
+}
+
+async function signOut() {
+  if (supabaseClient) await supabaseClient.auth.signOut();
+  currentUser = null;
+  updateAuthUI();
+  setAuthStatus('Signed out. Local data remains on this device.');
+  setSyncStatus('local');
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderDayNav();
+  renderTimeline();
+  renderStats();
+  document.getElementById('headerDate').textContent = formatFullDate(currentDay);
+  document.getElementById('dayBadge').textContent = 'Day ' + dayNumber(currentDay);
+}
+
+function getDayKeys() {
+  const keys = new Set(Object.keys(allDays));
+  keys.add(currentDay);
+  keys.add(todayKey());
+  return Array.from(keys).sort();
+}
+
+function renderDayNav() {
+  const keys = getDayKeys();
+  const idx = keys.indexOf(currentDay);
+
+  // Update label
+  document.getElementById('navDayLabel').textContent = 'Day ' + dayNumber(currentDay);
+  document.getElementById('navDayDate').textContent = formatBahrainDate(currentDay, { day: 'numeric', month: 'short', year: 'numeric' });
+
+  // Arrows
+  document.getElementById('prevBtn').disabled = idx <= 0;
+  document.getElementById('nextBtn').disabled = idx >= keys.length - 1;
+
+  // Dots (max 7 shown)
+  const dots = document.getElementById('dayDots');
+  const show = keys.length <= 7 ? keys : keys.slice(Math.max(0, idx-3), Math.min(keys.length, idx+4));
+  dots.innerHTML = show.map((k, i) => {
+    const isActive = k === currentDay;
+    return `<div class="day-dot ${isActive ? 'active' : ''}" onclick="switchDay('${k}')" title="Day ${dayNumber(k)}"></div>`;
+  }).join('');
+}
+
+function goDay(dir) {
+  const keys = getDayKeys();
+  const idx = keys.indexOf(currentDay);
+  const newIdx = idx + dir;
+  if (newIdx >= 0 && newIdx < keys.length) {
+    switchDay(keys[newIdx]);
+  }
+}
+
+function renderTimeline() {
+  const tl = document.getElementById('timeline');
+  const entries = (allDays[currentDay] || []).slice().sort((a,b) => a.time.localeCompare(b.time));
+  
+  if (entries.length === 0) {
+    tl.innerHTML = `<div class="empty-state" id="emptyState"><div class="empty-icon">📋</div><p>No entries yet.<br>Tap + to log your first event.</p></div>`;
+    return;
+  }
+
+  tl.innerHTML = entries.map((e,i) => buildEntryHTML(e, i)).join('');
+}
+
+function buildEntryHTML(e, i) {
+  const iconClass = `icon-${e.type}`;
+  const icons = { poop:'🚽', food:'🍽️', med:'💊', symptom:'😣', note:'📝', sleep:'🌙' };
+  
+  let title = '';
+  let tags = [];
+
+  if (e.type === 'poop') {
+    title = e.data.consistency || 'Bowel movement';
+    if (e.data.urgency) tags.push({ cls: 'tag-poop', txt: `Urgency ${e.data.urgency}/5` });
+    if (e.data.gas) tags.push({ cls: 'tag-poop', txt: `Gas: ${e.data.gas}` });
+    if (e.data.notes) tags.push({ cls: 'tag-note', txt: e.data.notes });
+  } else if (e.type === 'food') {
+    title = e.data.item || 'Food / drink';
+    if (e.data.amount) tags.push({ cls: 'tag-food', txt: e.data.amount });
+    if (e.data.fluid_ml) tags.push({ cls: 'tag-food', txt: `${e.data.fluid_ml} ml` });
+    if (e.data.tolerated) tags.push({ cls: e.data.tolerated === 'Yes' ? 'tag-food' : 'tag-symptom', txt: e.data.tolerated === 'Yes' ? '✓ Tolerated' : '✗ Not tolerated' });
+    if (e.data.notes) tags.push({ cls: 'tag-note', txt: e.data.notes });
+  } else if (e.type === 'med') {
+    title = e.data.name || 'Medication';
+    if (e.data.dose) tags.push({ cls: 'tag-med', txt: e.data.dose });
+    if (e.data.notes) tags.push({ cls: 'tag-note', txt: e.data.notes });
+  } else if (e.type === 'symptom') {
+    title = e.data.symptom || 'Symptom';
+    if (e.data.severity) tags.push({ cls: 'tag-symptom', txt: `Severity ${e.data.severity}/5` });
+    if (e.data.notes) tags.push({ cls: 'tag-note', txt: e.data.notes });
+  } else if (e.type === 'sleep') {
+    title = `Slept ${e.data.bedtime || '?'} → ${e.data.wakeup || '?'}`;
+    if (e.data.total) tags.push({ cls: 'tag-sleep', txt: e.data.total });
+    if (e.data.interruptions) tags.push({ cls: 'tag-sleep', txt: `${e.data.interruptions} interruption(s)` });
+    if (e.data.whoop_recovery) tags.push({ cls: 'tag-sleep', txt: `Recovery ${e.data.whoop_recovery}%` });
+    if (e.data.whoop_hrv) tags.push({ cls: 'tag-sleep', txt: `HRV ${e.data.whoop_hrv}ms` });
+    if (e.data.notes) tags.push({ cls: 'tag-note', txt: e.data.notes });
+  } else if (e.type === 'note') {
+    title = e.data.text || 'Note';
+  }
+
+  const tagsHTML = tags.map(t => `<span class="tag ${escapeHTML(t.cls)}">${escapeHTML(t.txt)}</span>`).join('');
+
+  return `
+    <div class="timeline-entry">
+      <div class="entry-icon-wrap ${escapeHTML(iconClass)}">${escapeHTML(icons[e.type] || '•')}</div>
+      <div class="entry-body">
+        <button class="entry-delete" data-entry-id="${escapeHTML(e.id)}" onclick="deleteEntryFromButton(this)">✕</button>
+        <div class="entry-time">${escapeHTML(e.time)}</div>
+        <div class="entry-title">${escapeHTML(title)}</div>
+        ${tagsHTML ? `<div class="entry-tags">${tagsHTML}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderStats() {
+  const entries = allDays[currentDay] || [];
+  const bm = entries.filter(e => e.type === 'poop').length;
+  const food = entries.filter(e => e.type === 'food' && e.data.ftype !== 'Fluid').length;
+  let fluids = 0;
+  entries.filter(e => e.type === 'food').forEach(e => {
+    if (e.data.fluid_ml) fluids += Number(e.data.fluid_ml) || 0;
+  });
+  const meds = entries.filter(e => e.type === 'med').length;
+  document.getElementById('statBM').textContent = bm;
+  document.getElementById('statFood').textContent = food;
+  document.getElementById('statFluids').textContent = fluids || '—';
+  document.getElementById('statMeds').textContent = meds;
+}
+
+// ─── Day switching ─────────────────────────────────────────────────────────────
+function switchDay(key) {
+  if (!allDays[key]) allDays[key] = [];
+  currentDay = key;
+  renderAll();
+}
+
+// ─── FAB ──────────────────────────────────────────────────────────────────────
+function toggleFab() {
+  fabOpen = !fabOpen;
+  document.getElementById('fabOptions').classList.toggle('hidden', !fabOpen);
+  document.getElementById('fabMain').classList.toggle('open', fabOpen);
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+function openModal(type) {
+  fabOpen = false;
+  document.getElementById('fabOptions').classList.add('hidden');
+  document.getElementById('fabMain').classList.remove('open');
+
+  const timeStr = currentBahrainTime();
+  const titles = { poop:'🚽 Bowel movement', food:'🍽️ Food / drink', med:'💊 Medication', symptom:'😣 Symptom', note:'📝 Quick note', sleep:'🌙 Sleep' };
+  document.getElementById('modalTitle').textContent = titles[type];
+
+  const body = document.getElementById('modalBody');
+  body.innerHTML = buildForm(type, timeStr);
+  document.getElementById('modalOverlay').classList.remove('hidden');
+
+  // Chip interactions
+  body.querySelectorAll('.chip').forEach(c => {
+    c.addEventListener('click', () => {
+      const grp = c.dataset.group;
+      if (grp) {
+        body.querySelectorAll(`.chip[data-group="${grp}"]`).forEach(x => x.classList.remove('selected'));
+      }
+      c.classList.toggle('selected');
+    });
+  });
+
+  body.querySelectorAll('.urgency-btn').forEach((b,i) => {
+    b.addEventListener('click', () => {
+      body.querySelectorAll('.urgency-btn').forEach(x => x.className = 'urgency-btn');
+      b.classList.add(`sel-${i+1}`);
+      b.dataset.selected = 'true';
+    });
+  });
+
+  body.querySelectorAll('.med-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = document.getElementById('f_name');
+      const dose = document.getElementById('f_dose');
+      if (name) name.value = btn.dataset.name || '';
+      if (dose) dose.value = btn.dataset.dose || '';
+    });
+  });
+}
+
+function buildForm(type, timeStr) {
+  if (type === 'poop') return `
+    <div class="form-group">
+      <label class="form-label">Time</label>
+      <input class="form-input" type="time" id="f_time" value="${timeStr}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Consistency</label>
+      <div class="chip-group">
+        ${['Watery','Very loose','Loose','Semi-formed','Formed'].map(c=>`<button class="chip" data-group="consistency">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Urgency (1 = calm, 5 = emergency)</label>
+      <div class="urgency-row">
+        ${[1,2,3,4,5].map(n=>`<button class="urgency-btn">${n}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Gas</label>
+      <div class="chip-group">
+        ${['None','A little','Moderate','A lot'].map(c=>`<button class="chip" data-group="gas">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Blood? (be honest 🙏)</label>
+      <div class="chip-group">
+        ${['No','A little','Yes'].map(c=>`<button class="chip" data-group="blood">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <textarea class="form-textarea" id="f_notes" placeholder="e.g. cramping before, took a while..."></textarea>
+    </div>
+    <button class="btn-submit" onclick="submitEntry('poop')">Save</button>
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+  `;
+
+  if (type === 'food') return `
+    <div class="form-group">
+      <label class="form-label">Time</label>
+      <input class="form-input" type="time" id="f_time" value="${timeStr}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">What did you have?</label>
+      <input class="form-input" type="text" id="f_item" placeholder="e.g. Chicken broth, low-fat milk, rice...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount / quantity</label>
+      <input class="form-input" type="text" id="f_amount" placeholder="e.g. 200ml, 1 cup, 1 bowl">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Fluid amount (ml)</label>
+      <input class="form-input" type="number" id="f_fluid_ml" min="0" step="10" placeholder="Only for drinks / fluids">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <div class="chip-group">
+        ${['Fluid','Soft food','Solid food','Snack'].map(c=>`<button class="chip" data-group="ftype">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tolerated well?</label>
+      <div class="chip-group">
+        ${['Yes','Partly','No'].map(c=>`<button class="chip" data-group="tolerated">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <textarea class="form-textarea" id="f_notes" placeholder="e.g. caused bloating, felt fine after..."></textarea>
+    </div>
+    <button class="btn-submit" onclick="submitEntry('food')">Save</button>
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+  `;
+
+  if (type === 'med') return `
+    <div class="form-group">
+      <label class="form-label">Time</label>
+      <input class="form-input" type="time" id="f_time" value="${timeStr}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Common meds</label>
+      <div class="chip-group">
+        ${MED_PRESETS.map(m=>`<button class="chip med-preset" data-name="${escapeHTML(m.name)}" data-dose="${escapeHTML(m.dose)}">${escapeHTML(m.name)} ${escapeHTML(m.dose)}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Medication name</label>
+      <input class="form-input" type="text" id="f_name" placeholder="e.g. Paracetamol, Imodium...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Dose</label>
+      <input class="form-input" type="text" id="f_dose" placeholder="e.g. 500mg, 1 tablet">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <textarea class="form-textarea" id="f_notes" placeholder="e.g. taken with food, prescribed by..."></textarea>
+    </div>
+    <button class="btn-submit" onclick="submitEntry('med')">Save</button>
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+  `;
+
+  if (type === 'symptom') return `
+    <div class="form-group">
+      <label class="form-label">Time</label>
+      <input class="form-input" type="time" id="f_time" value="${timeStr}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Symptom</label>
+      <div class="chip-group">
+        ${['Perianal irritation','Bloating','Nausea','Cramping','Fatigue','Pain (wound)','Urgency','Tenesmus','Other'].map(c=>`<button class="chip" data-group="symptom">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Custom symptom (if Other)</label>
+      <input class="form-input" type="text" id="f_custom" placeholder="Describe...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Severity (1 = mild, 5 = severe)</label>
+      <div class="urgency-row">
+        ${[1,2,3,4,5].map(n=>`<button class="urgency-btn">${n}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <textarea class="form-textarea" id="f_notes" placeholder="Any triggers? What helped?"></textarea>
+    </div>
+    <button class="btn-submit" onclick="submitEntry('symptom')">Save</button>
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+  `;
+
+  if (type === 'sleep') return `
+    <div class="sleep-grid">
+      <div class="form-group">
+        <label class="form-label">Bedtime</label>
+        <input class="form-input" type="time" id="f_bedtime">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Wake-up time</label>
+        <input class="form-input" type="time" id="f_wakeup" value="${timeStr}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Total sleep (e.g. 5h 30m)</label>
+      <input class="form-input" type="text" id="f_total" placeholder="e.g. 6h 15m">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Night interruptions / false alarms</label>
+      <input class="form-input" type="number" id="f_interruptions" placeholder="0" min="0">
+    </div>
+    <div class="divider"></div>
+    <div class="form-label" style="margin-bottom:10px">Whoop metrics <span style="font-weight:400;color:var(--ink-faint)">(optional — check your Whoop app)</span></div>
+    <div class="sleep-grid">
+      <div class="form-group">
+        <label class="form-label">Recovery %</label>
+        <input class="form-input" type="number" id="f_recovery" placeholder="e.g. 68">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sleep score %</label>
+        <input class="form-input" type="number" id="f_sleep_score" placeholder="e.g. 75">
+      </div>
+      <div class="form-group">
+        <label class="form-label">HRV (ms)</label>
+        <input class="form-input" type="number" id="f_hrv" placeholder="e.g. 42">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Resting HR (bpm)</label>
+        <input class="form-input" type="number" id="f_rhr" placeholder="e.g. 58">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <textarea class="form-textarea" id="f_notes" placeholder="How did you feel waking up?"></textarea>
+    </div>
+    <button class="btn-submit" onclick="submitEntry('sleep')">Save</button>
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+  `;
+
+  if (type === 'note') return `
+    <div class="form-group">
+      <label class="form-label">Time</label>
+      <input class="form-input" type="time" id="f_time" value="${timeStr}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note</label>
+      <textarea class="form-textarea" id="f_text" placeholder="Anything worth noting — doctor visit, how you feel, observations..." style="min-height:120px"></textarea>
+    </div>
+    <button class="btn-submit" onclick="submitEntry('note')">Save</button>
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+  `;
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.add('hidden');
+}
+
+function closeOnOverlay(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function getSelected(group) {
+  const el = document.querySelector(`.chip[data-group="${group}"].selected`);
+  return el ? el.textContent : '';
+}
+
+function getUrgency() {
+  const el = document.querySelector('.urgency-btn[data-selected="true"]');
+  return el ? el.textContent : '';
+}
+
+function submitEntry(type) {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const timeEl = document.getElementById('f_time');
+  const time = timeEl ? timeEl.value : currentBahrainTime();
+  let data = {};
+
+  if (type === 'poop') {
+    data = {
+      consistency: getSelected('consistency'),
+      urgency: getUrgency(),
+      gas: getSelected('gas'),
+      blood: getSelected('blood'),
+      notes: (document.getElementById('f_notes')||{}).value || ''
+    };
+  } else if (type === 'food') {
+    data = {
+      item: (document.getElementById('f_item')||{}).value || '',
+      amount: (document.getElementById('f_amount')||{}).value || '',
+      fluid_ml: (document.getElementById('f_fluid_ml')||{}).value || '',
+      ftype: getSelected('ftype'),
+      tolerated: getSelected('tolerated'),
+      notes: (document.getElementById('f_notes')||{}).value || ''
+    };
+  } else if (type === 'med') {
+    data = {
+      name: (document.getElementById('f_name')||{}).value || '',
+      dose: (document.getElementById('f_dose')||{}).value || '',
+      notes: (document.getElementById('f_notes')||{}).value || ''
+    };
+  } else if (type === 'symptom') {
+    const custom = (document.getElementById('f_custom')||{}).value || '';
+    data = {
+      symptom: getSelected('symptom') === 'Other' && custom ? custom : (getSelected('symptom') || custom),
+      severity: getUrgency(),
+      notes: (document.getElementById('f_notes')||{}).value || ''
+    };
+  } else if (type === 'sleep') {
+    data = {
+      bedtime: (document.getElementById('f_bedtime')||{}).value || '',
+      wakeup: (document.getElementById('f_wakeup')||{}).value || '',
+      total: (document.getElementById('f_total')||{}).value || '',
+      interruptions: (document.getElementById('f_interruptions')||{}).value || '',
+      whoop_recovery: (document.getElementById('f_recovery')||{}).value || '',
+      whoop_sleep_score: (document.getElementById('f_sleep_score')||{}).value || '',
+      whoop_hrv: (document.getElementById('f_hrv')||{}).value || '',
+      whoop_rhr: (document.getElementById('f_rhr')||{}).value || '',
+      notes: (document.getElementById('f_notes')||{}).value || ''
+    };
+  } else if (type === 'note') {
+    data = { text: (document.getElementById('f_text')||{}).value || '' };
+  }
+
+  if (!allDays[currentDay]) allDays[currentDay] = [];
+  const entry = { id, type, time, data };
+  allDays[currentDay].push(entry);
+  save();
+  pushEntryToCloud(currentDay, entry);
+  closeModal();
+  renderAll();
+}
+
+function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  allDays[currentDay] = allDays[currentDay].filter(e => e.id !== id);
+  if (id && !deletedEntryIds.includes(id)) deletedEntryIds.push(id);
+  save();
+  deleteEntryFromCloud(id);
+  renderAll();
+}
+
+function deleteEntryFromButton(button) {
+  deleteEntry(button.dataset.entryId || '');
+}
+
+// ─── Backup ──────────────────────────────────────────────────────────────────
+function exportBackup() {
+  const payload = {
+    app: 'RecoveryLog',
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    days: allDays
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `recovery-log-backup-${todayKey()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importBackup(event) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      const days = parsed.days || parsed;
+      if (!days || typeof days !== 'object' || Array.isArray(days)) {
+        throw new Error('Invalid backup');
+      }
+      const count = Object.values(days).reduce((sum, entries) => sum + (Array.isArray(entries) ? entries.length : 0), 0);
+      if (!confirm(`Import ${count} entries from this backup? This will merge with the current log.`)) return;
+      Object.keys(days).forEach(key => {
+        if (!Array.isArray(days[key])) return;
+        const existing = allDays[key] || [];
+        const seen = new Set(existing.map(entry => entry.id));
+        const incoming = days[key].filter(entry => entry && entry.id && !seen.has(entry.id) && !deletedEntryIds.includes(entry.id));
+        allDays[key] = existing.concat(incoming);
+      });
+      save();
+      renderAll();
+      uploadLocalEntries().then(() => {
+        if (currentUser) setSyncStatus('synced');
+      }).catch(e => setAuthStatus(`Import synced locally, cloud sync failed: ${e.message}`));
+      alert('Backup imported.');
+    } catch(e) {
+      alert('Could not import that backup file.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ─── Doctor report ───────────────────────────────────────────────────────────
+function setReportToToday() {
+  const start = document.getElementById('reportStart');
+  const end = document.getElementById('reportEnd');
+  if (start) start.value = currentDay;
+  if (end) end.value = currentDay;
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function entryReportTitle(entry) {
+  const d = entry.data || {};
+  if (entry.type === 'poop') return d.consistency || 'Bowel movement';
+  if (entry.type === 'food') return d.item || 'Food / drink';
+  if (entry.type === 'med') return [d.name, d.dose].filter(Boolean).join(' ') || 'Medication';
+  if (entry.type === 'symptom') return d.symptom || 'Symptom';
+  if (entry.type === 'sleep') return `Sleep ${d.total || ''}`.trim();
+  return d.text || 'Note';
+}
+
+function entryReportDetails(entry) {
+  const d = entry.data || {};
+  if (entry.type === 'poop') return [
+    d.urgency ? `urgency ${d.urgency}/5` : '',
+    d.gas ? `gas ${d.gas}` : '',
+    d.blood ? `blood ${d.blood}` : '',
+    d.notes || ''
+  ].filter(Boolean).join('; ');
+  if (entry.type === 'food') return [
+    d.ftype || '',
+    d.amount || '',
+    d.fluid_ml ? `${d.fluid_ml} ml` : '',
+    d.tolerated ? `tolerated ${d.tolerated}` : '',
+    d.notes || ''
+  ].filter(Boolean).join('; ');
+  if (entry.type === 'med') return d.notes || '';
+  if (entry.type === 'symptom') return [d.severity ? `severity ${d.severity}/5` : '', d.notes || ''].filter(Boolean).join('; ');
+  if (entry.type === 'sleep') return [
+    d.bedtime ? `bed ${d.bedtime}` : '',
+    d.wakeup ? `wake ${d.wakeup}` : '',
+    d.interruptions ? `${d.interruptions} interruptions` : '',
+    d.whoop_recovery ? `recovery ${d.whoop_recovery}%` : '',
+    d.whoop_sleep_score ? `sleep score ${d.whoop_sleep_score}%` : '',
+    d.whoop_hrv ? `HRV ${d.whoop_hrv}ms` : '',
+    d.whoop_rhr ? `RHR ${d.whoop_rhr}bpm` : '',
+    d.notes || ''
+  ].filter(Boolean).join('; ');
+  return '';
+}
+
+function exportDoctorCSV() {
+  const start = document.getElementById('reportStart').value || currentDay;
+  const end = document.getElementById('reportEnd').value || start;
+  const keys = getDayKeys().filter(key => key >= start && key <= end).sort();
+  const rows = [['Date', 'Recovery day', 'Time', 'Type', 'Title', 'Details']];
+  keys.forEach(key => {
+    (allDays[key] || []).slice().sort((a,b) => a.time.localeCompare(b.time)).forEach(entry => {
+      rows.push([
+        formatBahrainDate(key, { day: 'numeric', month: 'short', year: 'numeric' }),
+        `Day ${dayNumber(key)}`,
+        entry.time,
+        entry.type,
+        entryReportTitle(entry),
+        entryReportDetails(entry)
+      ]);
+    });
+  });
+  if (rows.length === 1) {
+    alert('No entries in that date range.');
+    return;
+  }
+  const csv = rows.map(row => row.map(csvCell).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `recovery-report-${start}-to-${end}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ─── New day button ───────────────────────────────────────────────────────────
+function addNewDay() {
+  const today = todayKey();
+  if (!allDays[today]) allDays[today] = [];
+  currentDay = today;
+  save();
+  renderAll();
+}
+
+// Check if we need to add today automatically
+function checkNewDay() {
+  const today = todayKey();
+  if (!allDays[today]) {
+    allDays[today] = [];
+    save();
+  }
+  if (currentDay !== today) {
+    // Keep viewing current unless it's first load
+  }
+}
+
+// ─── Swipe gesture support ───────────────────────────────────────────────────
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+  // Don't swipe if modal is open
+  if (!document.getElementById('modalOverlay').classList.contains('hidden')) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 60) goDay(dx < 0 ? 1 : -1);
+}, { passive: true });
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+load();
+initSupabaseSync();
+</script>
+</body>
+</html>

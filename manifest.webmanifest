@@ -1,0 +1,17 @@
+{
+  "name": "Mohamed's Recovery Log",
+  "short_name": "RecoveryLog",
+  "description": "A simple private recovery tracker for daily logs.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#FAF7F2",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
