@@ -258,6 +258,34 @@
     gap: 8px;
   }
 
+  .sync-compact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .sync-compact-main {
+    min-width: 0;
+  }
+
+  .sync-compact-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .sync-compact-copy {
+    color: var(--ink-light);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .sync-expanded {
+    margin-top: 12px;
+  }
+
   .auth-status {
     color: var(--ink-faint);
     font-family: 'DM Mono', monospace;
@@ -764,23 +792,29 @@
 
 <div class="panel-stack">
   <div class="tool-panel">
-    <div class="tool-panel-title">Sync</div>
-    <p class="tool-panel-copy">Sign in with email to sync safely between iPhone and iPad.</p>
-    <div id="authSignedOut">
-      <div class="auth-row">
-        <input class="form-input" type="email" id="authEmail" placeholder="Email address">
-        <input class="form-input" type="text" id="authCode" inputmode="numeric" placeholder="6-digit code from email">
+    <div class="sync-compact">
+      <div class="sync-compact-main">
+        <div class="sync-compact-title">Account sync</div>
+        <div class="sync-compact-copy" id="authStatus">Checking sync...</div>
       </div>
-      <div class="tool-actions" style="margin-top:10px">
-        <button class="tool-btn primary" onclick="sendMagicLink()">Send code</button>
-        <button class="tool-btn" onclick="verifyCode()">Verify</button>
+      <button class="tool-btn primary" id="syncToggleBtn" onclick="toggleSyncPanel()">Sign in</button>
+    </div>
+    <div class="sync-expanded hidden" id="syncPanel">
+      <div id="authSignedOut">
+        <div class="auth-row">
+          <input class="form-input" type="email" id="authEmail" placeholder="Email address">
+          <input class="form-input" type="text" id="authCode" inputmode="numeric" placeholder="6-digit code from email">
+        </div>
+        <div class="tool-actions" style="margin-top:10px">
+          <button class="tool-btn primary" onclick="sendMagicLink()">Send code</button>
+          <button class="tool-btn" onclick="verifyCode()">Verify</button>
+        </div>
+      </div>
+      <div id="authSignedIn" class="hidden">
+        <p class="tool-panel-copy" id="authEmailLabel" style="margin-bottom:10px"></p>
+        <button class="tool-btn" onclick="signOut()">Sign out</button>
       </div>
     </div>
-    <div id="authSignedIn" class="hidden">
-      <p class="tool-panel-copy" id="authEmailLabel" style="margin-bottom:10px"></p>
-      <button class="tool-btn" onclick="signOut()">Sign out</button>
-    </div>
-    <div class="auth-status" id="authStatus">Checking sync...</div>
   </div>
 
   <div class="tool-panel">
@@ -861,6 +895,7 @@ let fabOpen = false;
 let supabaseClient = null;
 let currentUser = null;
 let applyingCloud = false;
+let syncPanelOpen = false;
 
 function todayKey() {
   return keyFromBahrainDate(new Date());
@@ -992,14 +1027,22 @@ function setAuthStatus(message) {
   if (el) el.textContent = message;
 }
 
+function toggleSyncPanel(force) {
+  syncPanelOpen = typeof force === 'boolean' ? force : !syncPanelOpen;
+  const panel = document.getElementById('syncPanel');
+  if (panel) panel.classList.toggle('hidden', !syncPanelOpen);
+}
+
 function updateAuthUI() {
   const signedOut = document.getElementById('authSignedOut');
   const signedIn = document.getElementById('authSignedIn');
   const emailLabel = document.getElementById('authEmailLabel');
+  const toggleBtn = document.getElementById('syncToggleBtn');
   if (!signedOut || !signedIn) return;
   signedOut.classList.toggle('hidden', !!currentUser);
   signedIn.classList.toggle('hidden', !currentUser);
   if (emailLabel && currentUser) emailLabel.textContent = `Signed in as ${currentUser.email || 'Mohamed'}`;
+  if (toggleBtn) toggleBtn.textContent = currentUser ? 'Account' : 'Sign in';
 }
 
 async function loadSyncConfig() {
@@ -1165,6 +1208,7 @@ async function sendMagicLink() {
     email,
     options: { emailRedirectTo: appRedirectUrl() }
   });
+  toggleSyncPanel(true);
   setAuthStatus(result.error ? `Sign-in error: ${result.error.message}` : 'Code sent. Open the email and paste the 6-digit code here.');
 }
 
@@ -1181,7 +1225,10 @@ async function verifyCode() {
   }
   const result = await supabaseClient.auth.verifyOtp({ email, token, type: 'email' });
   if (result.error) setAuthStatus(`Code error: ${result.error.message}`);
-  else document.getElementById('authCode').value = '';
+  else {
+    document.getElementById('authCode').value = '';
+    toggleSyncPanel(false);
+  }
 }
 
 async function signOut() {
@@ -1190,6 +1237,7 @@ async function signOut() {
   updateAuthUI();
   setAuthStatus('Signed out. Local data remains on this device.');
   setSyncStatus('local');
+  toggleSyncPanel(false);
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
