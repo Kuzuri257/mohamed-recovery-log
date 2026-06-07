@@ -18,6 +18,7 @@ type AiRequest = {
   end?: string;
   question?: string;
   entryId?: string;
+  foodMap?: unknown;
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -51,10 +52,12 @@ function entryTitle(entry: RecoveryEntry) {
 function entryDetails(entry: RecoveryEntry) {
   const d = entry.data || {};
   if (entry.type === "poop") {
+    const linkedFoods = Array.isArray(d.recent_food_ids) ? d.recent_food_ids.length : 0;
     return [
       text(d.urgency) ? `urgency ${text(d.urgency)}/5` : "",
       text(d.gas) ? `gas ${text(d.gas)}` : "",
       text(d.blood) ? `blood ${text(d.blood)}` : "",
+      linkedFoods ? `${linkedFoods} linked food(s)` : "",
       text(d.notes)
     ].filter(Boolean).join("; ");
   }
@@ -62,14 +65,21 @@ function entryDetails(entry: RecoveryEntry) {
     return [
       text(d.ftype),
       text(d.amount),
+      text(d.ingredients) ? `ingredients ${text(d.ingredients)}` : "",
       text(d.fluid_ml) ? `${text(d.fluid_ml)} ml` : "",
+      text(d.trial_status) ? `food trial ${text(d.trial_status)}` : "",
       text(d.tolerated) ? `tolerated ${text(d.tolerated)}` : "",
       text(d.notes)
     ].filter(Boolean).join("; ");
   }
   if (entry.type === "med") return text(d.notes);
   if (entry.type === "symptom") {
-    return [text(d.severity) ? `severity ${text(d.severity)}/5` : "", text(d.notes)].filter(Boolean).join("; ");
+    const linkedFoods = Array.isArray(d.recent_food_ids) ? d.recent_food_ids.length : 0;
+    return [
+      text(d.severity) ? `severity ${text(d.severity)}/5` : "",
+      linkedFoods ? `${linkedFoods} linked food(s)` : "",
+      text(d.notes)
+    ].filter(Boolean).join("; ");
   }
   if (entry.type === "sleep") {
     return [
@@ -109,6 +119,7 @@ function buildPrompt(
   end: string,
   focusEntries: RecoveryEntry[],
   historyEntries: RecoveryEntry[],
+  foodMap: unknown,
   question?: string,
   entryId?: string
 ) {
@@ -130,6 +141,8 @@ Important safety rules:
 - Mention urgent red flags only when relevant from the log or history, and phrase them as "seek medical advice urgently if..." not as a diagnosis.
 - Keep the tone calm, simple, and useful for a non-technical patient.
 - Use recent history. Compare today's pattern with earlier days when the history supports it.
+- Use the Food Map summary when discussing tolerance. Treat it as a logging signal, not proof of causation.
+- For food insights, mention bowel movement count, loose/urgent bowel movements, symptoms after the food, and evidence strength when provided.
 - If the data is missing or unclear, say what should be logged next time.
 - If there is not enough data to infer a pattern, say that clearly.
 
@@ -145,6 +158,9 @@ ${JSON.stringify(compactLog(focusEntries), null, 2)}
 
 Recent history before focus range:
 ${JSON.stringify(compactLog(historyEntries), null, 2)}
+
+Food Map summary from the app:
+${JSON.stringify(foodMap || [], null, 2)}
 
 Return only valid JSON with exactly these keys:
 {
@@ -264,7 +280,7 @@ Deno.serve(async req => {
       return jsonResponse({ error: "That entry was not found in the selected day." }, 404);
     }
 
-    const text = await callClaude(buildPrompt(mode, orderedStart, orderedEnd, focusEntries, historyEntries, question, entryId));
+    const text = await callClaude(buildPrompt(mode, orderedStart, orderedEnd, focusEntries, historyEntries, body.foodMap || [], question, entryId));
     let parsed: unknown;
     try {
       parsed = parseClaudeJson(text);

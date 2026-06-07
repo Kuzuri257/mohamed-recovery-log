@@ -229,7 +229,7 @@
 
   .app-tabs {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     padding: 0 20px 8px;
   }
@@ -466,6 +466,295 @@
     line-height: 1.45;
     margin-top: 10px;
     padding-top: 10px;
+  }
+
+  .food-map-view {
+    padding: 0 20px 18px;
+  }
+
+  .food-map-shell {
+    max-width: 760px;
+    margin: 0 auto;
+    display: grid;
+    gap: 12px;
+  }
+
+  .food-map-hero {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .food-map-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .food-map-title {
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  .food-map-copy {
+    color: var(--ink-light);
+    font-size: 12px;
+    line-height: 1.45;
+    margin-top: 4px;
+  }
+
+  .food-map-range {
+    flex-shrink: 0;
+    background: var(--ink);
+    border-radius: 999px;
+    color: white;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 6px 8px;
+    white-space: nowrap;
+  }
+
+  .food-map-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .food-mini-stat {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--cream);
+    padding: 9px;
+    min-height: 66px;
+  }
+
+  .food-mini-stat strong {
+    display: block;
+    font-size: 20px;
+    line-height: 1;
+    margin-bottom: 5px;
+  }
+
+  .food-mini-stat span {
+    color: var(--ink-light);
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .food-map-controls {
+    display: grid;
+    gap: 8px;
+  }
+
+  .food-map-search-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .food-filter-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .food-filter-row::-webkit-scrollbar { display: none; }
+
+  .food-filter-chip {
+    flex: 0 0 auto;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--warm-white);
+    color: var(--ink-light);
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 10px;
+  }
+
+  .food-filter-chip.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: white;
+  }
+
+  .food-group {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--warm-white);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .food-group > summary,
+  .food-group-static {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    list-style: none;
+    padding: 12px 14px;
+  }
+
+  .food-group > summary::-webkit-details-marker { display: none; }
+
+  .food-group-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .food-group-label strong {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .food-group-count {
+    color: var(--ink-faint);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .food-group-body {
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .food-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--cream);
+    padding: 12px;
+    overflow: hidden;
+  }
+
+  .food-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 9px;
+  }
+
+  .food-card-name {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .food-card-meta {
+    color: var(--ink-faint);
+    font-size: 11px;
+    margin-top: 3px;
+  }
+
+  .food-status {
+    border-radius: 999px;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 5px 8px;
+    white-space: nowrap;
+  }
+
+  .food-status.trigger { background: var(--accent-rose-light); color: var(--accent-rose); }
+  .food-status.watch { background: var(--accent-amber-light); color: var(--accent-amber); }
+  .food-status.ok { background: var(--accent-teal-light); color: var(--accent-teal); }
+  .food-status.unknown { background: var(--accent-slate-light); color: var(--accent-slate); }
+
+  .food-signal-row {
+    display: grid;
+    grid-template-columns: 86px 1fr 44px;
+    gap: 8px;
+    align-items: center;
+    color: var(--ink-light);
+    font-size: 11px;
+    margin-top: 7px;
+  }
+
+  .food-signal-label {
+    font-weight: 700;
+  }
+
+  .food-dots {
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .food-dot-on { color: var(--accent-rose); }
+  .food-dot-mid { color: var(--accent-amber); }
+  .food-dot-ok { color: var(--accent-teal); }
+  .food-dot-off { color: #D8D0C6; }
+
+  .food-score {
+    color: var(--ink-faint);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-align: right;
+  }
+
+  .food-meter {
+    height: 9px;
+    border-radius: 999px;
+    background: #EEE7DD;
+    margin: 10px 0 6px;
+    overflow: hidden;
+  }
+
+  .food-meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+  }
+
+  .food-meter.trigger span { background: var(--accent-rose); }
+  .food-meter.watch span { background: var(--accent-amber); }
+  .food-meter.ok span { background: var(--accent-teal); }
+  .food-meter.unknown span { background: var(--accent-slate); }
+
+  .food-meter-label {
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    margin-bottom: 8px;
+  }
+
+  .food-card-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+
+  .food-card-note {
+    color: var(--ink-light);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .food-link-help {
+    color: var(--ink-faint);
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: -4px;
   }
 
   .tool-actions {
@@ -1065,6 +1354,7 @@
 
 <div class="app-tabs">
   <button class="tab-btn active" id="logTabBtn" onclick="switchMainTab('log')">Log</button>
+  <button class="tab-btn" id="foodMapTabBtn" onclick="switchMainTab('foodmap')">Food Map</button>
   <button class="tab-btn" id="toolsTabBtn" onclick="switchMainTab('tools')">Tools</button>
 </div>
 
@@ -1090,6 +1380,29 @@
       <div class="empty-icon">📋</div>
       <p>No entries yet.<br>Tap + to log your first event.</p>
     </div>
+  </div>
+</div>
+
+<div class="food-map-view hidden" id="foodMapView">
+  <div class="food-map-shell">
+    <div class="food-map-hero">
+      <div class="food-map-title-row">
+        <div>
+          <div class="food-map-title">Food Map</div>
+          <p class="food-map-copy">A visual pattern view connecting foods with bowel movements and symptoms logged afterwards.</p>
+        </div>
+        <div class="food-map-range" id="foodMapRange">14 days</div>
+      </div>
+      <div class="food-map-stats" id="foodMapStats"></div>
+    </div>
+    <div class="food-map-controls">
+      <div class="food-map-search-row">
+        <input class="form-input" id="foodMapSearch" type="text" placeholder="Search food..." oninput="renderFoodMap()">
+        <button class="tool-btn" id="foodMapSortBtn" onclick="toggleFoodMapSort()">Highest reaction</button>
+      </div>
+      <div class="food-filter-row" id="foodMapFilters"></div>
+    </div>
+    <div id="foodMapContent"></div>
   </div>
 </div>
 
@@ -1190,6 +1503,8 @@ let applyingCloud = false;
 let syncPanelOpen = false;
 let activeMainTab = 'log';
 let editingEntryId = null;
+let foodMapFilter = 'important';
+let foodMapSort = 'reaction';
 
 function todayKey() {
   return keyFromBahrainDate(new Date());
@@ -1328,20 +1643,25 @@ function toggleSyncPanel(force) {
 }
 
 function switchMainTab(tab) {
-  activeMainTab = tab === 'tools' ? 'tools' : 'log';
+  activeMainTab = ['log', 'foodmap', 'tools'].includes(tab) ? tab : 'log';
   fabOpen = false;
   const logView = document.getElementById('logView');
+  const foodMapView = document.getElementById('foodMapView');
   const toolsView = document.getElementById('toolsView');
   const logBtn = document.getElementById('logTabBtn');
+  const foodMapBtn = document.getElementById('foodMapTabBtn');
   const toolsBtn = document.getElementById('toolsTabBtn');
   const quickBar = document.querySelector('.quick-log-bar');
   const fabOptions = document.getElementById('fabOptions');
   if (logView) logView.classList.toggle('hidden', activeMainTab !== 'log');
+  if (foodMapView) foodMapView.classList.toggle('hidden', activeMainTab !== 'foodmap');
   if (toolsView) toolsView.classList.toggle('hidden', activeMainTab !== 'tools');
   if (logBtn) logBtn.classList.toggle('active', activeMainTab === 'log');
+  if (foodMapBtn) foodMapBtn.classList.toggle('active', activeMainTab === 'foodmap');
   if (toolsBtn) toolsBtn.classList.toggle('active', activeMainTab === 'tools');
   if (quickBar) quickBar.classList.toggle('hidden', activeMainTab !== 'log');
   if (fabOptions) fabOptions.classList.add('hidden');
+  if (activeMainTab === 'foodmap') renderFoodMap();
 }
 
 function toggleAdvancedTools() {
@@ -1431,8 +1751,24 @@ async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is r
   showAIError(loadingMessage, targetId);
   try {
     await uploadLocalEntries();
+    const foodMap = buildFoodMapModel();
     const { data, error } = await supabaseClient.functions.invoke('recovery-ai', {
-      body: { mode, start: currentDay, end: currentDay, ...extraBody }
+      body: {
+        mode,
+        start: currentDay,
+        end: currentDay,
+        foodMap: foodMap.cards.slice(0, 12).map(card => ({
+          food: card.name,
+          status: card.label,
+          meals: card.meals,
+          bm_after: card.bmLinks,
+          loose_bm_after: card.looseBms,
+          symptoms_after: card.symptomLinks,
+          reaction_score: card.reactionScore,
+          evidence: { marked: card.markedLinks, timing: card.timingLinks }
+        })),
+        ...extraBody
+      }
     });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
@@ -1674,6 +2010,7 @@ function renderAll() {
   renderDayNav();
   renderTimeline();
   renderStats();
+  renderFoodMap();
   document.getElementById('headerDate').textContent = formatFullDate(currentDay);
   document.getElementById('dayBadge').textContent = 'Day ' + dayNumber(currentDay);
 }
@@ -1738,11 +2075,14 @@ function buildEntryHTML(e, i) {
     title = e.data.consistency || 'Bowel movement';
     if (e.data.urgency) tags.push({ cls: 'tag-poop', txt: `Urgency ${e.data.urgency}/5` });
     if (e.data.gas) tags.push({ cls: 'tag-poop', txt: `Gas: ${e.data.gas}` });
+    if (Array.isArray(e.data.recent_food_ids) && e.data.recent_food_ids.length) tags.push({ cls: 'tag-food', txt: `${e.data.recent_food_ids.length} food link(s)` });
     if (e.data.notes) tags.push({ cls: 'tag-note', txt: e.data.notes });
   } else if (e.type === 'food') {
     title = e.data.item || 'Food / drink';
     if (e.data.amount) tags.push({ cls: 'tag-food', txt: e.data.amount });
     if (e.data.fluid_ml) tags.push({ cls: 'tag-food', txt: `${e.data.fluid_ml} ml` });
+    if (e.data.trial_status) tags.push({ cls: e.data.trial_status === 'Testing new' ? 'tag-symptom' : 'tag-food', txt: e.data.trial_status });
+    if (e.data.ingredients) tags.push({ cls: 'tag-note', txt: e.data.ingredients });
     if (e.data.tolerated) tags.push({ cls: e.data.tolerated === 'Yes' ? 'tag-food' : 'tag-symptom', txt: e.data.tolerated === 'Yes' ? '✓ Tolerated' : '✗ Not tolerated' });
     if (e.data.notes) tags.push({ cls: 'tag-note', txt: e.data.notes });
   } else if (e.type === 'med') {
@@ -1752,6 +2092,7 @@ function buildEntryHTML(e, i) {
   } else if (e.type === 'symptom') {
     title = e.data.symptom || 'Symptom';
     if (e.data.severity) tags.push({ cls: 'tag-symptom', txt: `Severity ${e.data.severity}/5` });
+    if (Array.isArray(e.data.recent_food_ids) && e.data.recent_food_ids.length) tags.push({ cls: 'tag-food', txt: `${e.data.recent_food_ids.length} food link(s)` });
     if (e.data.notes) tags.push({ cls: 'tag-note', txt: e.data.notes });
   } else if (e.type === 'sleep') {
     title = `Slept ${e.data.bedtime || '?'} → ${e.data.wakeup || '?'}`;
@@ -1799,6 +2140,312 @@ function renderStats() {
   document.getElementById('statMeds').textContent = meds;
 }
 
+function normalizeFoodName(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\b(the|with|and|small|large|cup|bowl|plate|glass)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function displayFoodName(value) {
+  const text = String(value || '').trim();
+  return text ? text.replace(/\s+/g, ' ') : 'Unnamed food';
+}
+
+function foodRelationWindowHours(entryType) {
+  return entryType === 'poop' ? 12 : 8;
+}
+
+function isLooseBM(entry) {
+  return /watery|very loose|loose/i.test(entry.data?.consistency || '');
+}
+
+function severityNumber(entry) {
+  return parseNumber(entry.data?.severity || entry.data?.urgency);
+}
+
+function foodMapEntries(daysBack = 14) {
+  const current = entryDateTime(currentDay, '23:59');
+  const earliest = current - (daysBack - 1) * 24 * 60 * 60 * 1000;
+  return allEntriesWithDates().filter(entry => {
+    const ts = entryDateTime(entry.dateKey, entry.time);
+    return ts >= earliest && ts <= current;
+  });
+}
+
+function linkedFoodsForOutcome(outcome, foodsById, allFoods) {
+  const explicitIds = Array.isArray(outcome.data?.recent_food_ids) ? outcome.data.recent_food_ids.filter(Boolean) : [];
+  const explicit = explicitIds.map(id => foodsById.get(id)).filter(Boolean);
+  if (explicit.length) return explicit.map(food => ({ food, confidence: 'marked' }));
+
+  const outcomeTs = entryDateTime(outcome.dateKey, outcome.time);
+  const windowMs = foodRelationWindowHours(outcome.type) * 60 * 60 * 1000;
+  return allFoods
+    .filter(food => {
+      const foodTs = entryDateTime(food.dateKey, food.time);
+      return foodTs <= outcomeTs && outcomeTs - foodTs <= windowMs;
+    })
+    .slice(-3)
+    .map(food => ({ food, confidence: 'timing' }));
+}
+
+function buildFoodMapModel() {
+  const entries = foodMapEntries(14);
+  const foods = entries.filter(entry => entry.type === 'food' && (entry.data?.item || entry.data?.ingredients || entry.data?.ftype !== 'Fluid'));
+  const outcomes = entries.filter(entry => entry.type === 'poop' || entry.type === 'symptom');
+  const foodsById = new Map(foods.map(entry => [entry.id, entry]));
+  const groups = new Map();
+
+  foods.forEach(entry => {
+    const rawName = displayFoodName(entry.data?.item || entry.data?.ingredients || 'Food');
+    const key = normalizeFoodName(rawName) || entry.id;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        name: rawName,
+        firstTs: entryDateTime(entry.dateKey, entry.time),
+        lastTs: entryDateTime(entry.dateKey, entry.time),
+        meals: 0,
+        trialMeals: 0,
+        fluids: 0,
+        ingredients: new Set(),
+        bmLinks: 0,
+        markedLinks: 0,
+        timingLinks: 0,
+        looseBms: 0,
+        urgentBms: 0,
+        maxUrgency: 0,
+        symptomLinks: 0,
+        strongSymptoms: 0,
+        maxSymptom: 0,
+        notes: []
+      });
+    }
+    const group = groups.get(key);
+    group.name = group.name.length <= rawName.length ? group.name : rawName;
+    group.meals += entry.data?.ftype === 'Fluid' ? 0 : 1;
+    group.fluids += parseNumber(entry.data?.fluid_ml);
+    if (entry.data?.trial_status === 'Testing new') group.trialMeals += 1;
+    if (entry.data?.ingredients) {
+      String(entry.data.ingredients).split(',').map(item => item.trim()).filter(Boolean).forEach(item => group.ingredients.add(item));
+    }
+    if (entry.data?.notes) group.notes.push(entry.data.notes);
+    group.firstTs = Math.min(group.firstTs, entryDateTime(entry.dateKey, entry.time));
+    group.lastTs = Math.max(group.lastTs, entryDateTime(entry.dateKey, entry.time));
+  });
+
+  outcomes.forEach(outcome => {
+    linkedFoodsForOutcome(outcome, foodsById, foods).forEach(({ food, confidence }) => {
+      const key = normalizeFoodName(food.data?.item || food.data?.ingredients || 'Food') || food.id;
+      const group = groups.get(key);
+      if (!group) return;
+      if (confidence === 'marked') group.markedLinks += 1;
+      else group.timingLinks += 1;
+      if (outcome.type === 'poop') {
+        group.bmLinks += 1;
+        if (isLooseBM(outcome)) group.looseBms += 1;
+        const urgency = severityNumber(outcome);
+        if (urgency >= 4) group.urgentBms += 1;
+        group.maxUrgency = Math.max(group.maxUrgency, urgency);
+      } else if (outcome.type === 'symptom') {
+        group.symptomLinks += 1;
+        const severity = severityNumber(outcome);
+        if (severity >= 4) group.strongSymptoms += 1;
+        group.maxSymptom = Math.max(group.maxSymptom, severity);
+      }
+    });
+  });
+
+  const cards = Array.from(groups.values()).map(group => {
+    const exposure = Math.max(1, group.meals || 1);
+    const outcomeCount = group.bmLinks + group.symptomLinks;
+    const looseRate = group.bmLinks ? group.looseBms / group.bmLinks : 0;
+    const symptomRate = group.symptomLinks ? group.strongSymptoms / group.symptomLinks : 0;
+    const reactionScore = Math.min(100, Math.round(
+      (group.looseBms * 22) +
+      (group.urgentBms * 18) +
+      (group.strongSymptoms * 20) +
+      (group.maxUrgency * 4) +
+      (group.maxSymptom * 5) +
+      (group.markedLinks * 5)
+    ));
+    let status = 'unknown';
+    let label = 'Need data';
+    if (outcomeCount >= 2 && (reactionScore >= 48 || looseRate >= 0.55 || symptomRate >= 0.5)) {
+      status = 'trigger';
+      label = 'Possible trigger';
+    } else if (outcomeCount >= 1 && (reactionScore >= 24 || group.maxUrgency >= 3 || group.maxSymptom >= 3)) {
+      status = 'watch';
+      label = 'Watch';
+    } else if (group.meals >= 2 && reactionScore < 24) {
+      status = 'ok';
+      label = 'Seems OK';
+    }
+    return {
+      ...group,
+      ingredients: Array.from(group.ingredients).slice(0, 4),
+      notes: group.notes.slice(-2),
+      outcomeCount,
+      exposure,
+      reactionScore,
+      status,
+      label,
+      looseRate,
+      symptomRate,
+      lastLabel: new Date(group.lastTs).toLocaleDateString('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' })
+    };
+  });
+
+  return {
+    cards,
+    totalFoods: cards.length,
+    triggerCount: cards.filter(card => card.status === 'trigger').length,
+    watchCount: cards.filter(card => card.status === 'watch').length,
+    outcomeCount: outcomes.length
+  };
+}
+
+function foodDots(value, tone) {
+  const filled = Math.max(0, Math.min(5, Math.round(value)));
+  const cls = tone === 'trigger' ? 'food-dot-on' : tone === 'watch' ? 'food-dot-mid' : tone === 'ok' ? 'food-dot-ok' : 'food-dot-off';
+  return Array.from({ length: 5 }, (_, i) => `<span class="${i < filled ? cls : 'food-dot-off'}">●</span>`).join('');
+}
+
+function foodCardHTML(card) {
+  const width = Math.max(8, Math.min(100, card.reactionScore || (card.status === 'unknown' ? 18 : 8)));
+  const bmDots = card.bmLinks ? Math.min(5, card.looseBms + card.urgentBms + Math.ceil(card.maxUrgency / 2)) : 0;
+  const symptomDots = card.symptomLinks ? Math.min(5, card.strongSymptoms + Math.ceil(card.maxSymptom / 2)) : 0;
+  const confidenceDots = Math.min(5, card.markedLinks + Math.ceil(card.timingLinks / 2));
+  const chips = [
+    `${card.meals || 0} meal${card.meals === 1 ? '' : 's'}`,
+    card.trialMeals ? `${card.trialMeals} new trial` : '',
+    card.bmLinks ? `${card.bmLinks} BM after` : '',
+    card.symptomLinks ? `${card.symptomLinks} symptom after` : '',
+    card.markedLinks ? `${card.markedLinks} marked link` : ''
+  ].filter(Boolean);
+  const note = card.status === 'trigger'
+    ? `Logged pattern: ${card.looseBms} loose BM(s), ${card.urgentBms} urgent BM(s), and ${card.strongSymptoms} strong symptom(s) after this food.`
+    : card.status === 'watch'
+      ? `Some reaction signals appear after this food. Keep linking future BM/symptom logs to improve confidence.`
+      : card.status === 'ok'
+        ? `No strong reaction pattern is visible yet from the logged history.`
+        : `Needs more linked bowel movement or symptom logs before drawing a pattern.`;
+  return `
+    <article class="food-card">
+      <div class="food-card-head">
+        <div>
+          <div class="food-card-name">${escapeHTML(card.name)}</div>
+          <div class="food-card-meta">Last logged ${escapeHTML(card.lastLabel)}</div>
+        </div>
+        <span class="food-status ${escapeHTML(card.status)}">${escapeHTML(card.label)}</span>
+      </div>
+      <div class="food-signal-row">
+        <div class="food-signal-label">BM effect</div>
+        <div class="food-dots">${foodDots(bmDots, card.status)}</div>
+        <div class="food-score">${escapeHTML(card.bmLinks)}</div>
+      </div>
+      <div class="food-signal-row">
+        <div class="food-signal-label">Symptoms</div>
+        <div class="food-dots">${foodDots(symptomDots, card.status)}</div>
+        <div class="food-score">${escapeHTML(card.symptomLinks)}</div>
+      </div>
+      <div class="food-signal-row">
+        <div class="food-signal-label">Evidence</div>
+        <div class="food-dots">${foodDots(confidenceDots, card.markedLinks ? 'ok' : 'unknown')}</div>
+        <div class="food-score">${escapeHTML(card.markedLinks)}/${escapeHTML(card.timingLinks)}</div>
+      </div>
+      <div class="food-meter ${escapeHTML(card.status)}"><span style="width:${width}%"></span></div>
+      <div class="food-meter-label"><span>Reaction signal</span><span>${escapeHTML(card.reactionScore)}/100</span></div>
+      <div class="food-card-chips">
+        ${chips.map(chip => `<span class="tag tag-food">${escapeHTML(chip)}</span>`).join('')}
+        ${card.ingredients.map(item => `<span class="tag tag-note">${escapeHTML(item)}</span>`).join('')}
+      </div>
+      <p class="food-card-note">${escapeHTML(note)}</p>
+    </article>
+  `;
+}
+
+function setFoodMapFilter(nextFilter) {
+  foodMapFilter = nextFilter;
+  renderFoodMap();
+}
+
+function toggleFoodMapSort() {
+  foodMapSort = foodMapSort === 'reaction' ? 'recent' : 'reaction';
+  renderFoodMap();
+}
+
+function renderFoodMap() {
+  const content = document.getElementById('foodMapContent');
+  const statsEl = document.getElementById('foodMapStats');
+  const filtersEl = document.getElementById('foodMapFilters');
+  const sortBtn = document.getElementById('foodMapSortBtn');
+  if (!content || !statsEl || !filtersEl) return;
+
+  const model = buildFoodMapModel();
+  const search = (document.getElementById('foodMapSearch')?.value || '').trim().toLowerCase();
+  statsEl.innerHTML = `
+    <div class="food-mini-stat"><strong>${escapeHTML(model.totalFoods)}</strong><span>foods tracked</span></div>
+    <div class="food-mini-stat"><strong>${escapeHTML(model.triggerCount + model.watchCount)}</strong><span>need attention</span></div>
+    <div class="food-mini-stat"><strong>${escapeHTML(model.outcomeCount)}</strong><span>BM/symptom logs</span></div>
+  `;
+  const filters = [
+    ['important', 'Important'],
+    ['trigger', 'Triggers'],
+    ['watch', 'Watch'],
+    ['ok', 'Seems OK'],
+    ['unknown', 'Need data'],
+    ['all', 'All']
+  ];
+  filtersEl.innerHTML = filters.map(([key, label]) =>
+    `<button class="food-filter-chip ${foodMapFilter === key ? 'active' : ''}" onclick="setFoodMapFilter('${key}')">${escapeHTML(label)}</button>`
+  ).join('');
+  if (sortBtn) sortBtn.textContent = foodMapSort === 'reaction' ? 'Highest reaction' : 'Most recent';
+
+  let cards = model.cards.filter(card => {
+    if (search && !`${card.name} ${card.ingredients.join(' ')}`.toLowerCase().includes(search)) return false;
+    if (foodMapFilter === 'all') return true;
+    if (foodMapFilter === 'important') return card.status === 'trigger' || card.status === 'watch';
+    return card.status === foodMapFilter;
+  });
+  cards = cards.sort((a, b) => foodMapSort === 'recent'
+    ? b.lastTs - a.lastTs
+    : (b.reactionScore - a.reactionScore) || (b.outcomeCount - a.outcomeCount) || (b.lastTs - a.lastTs)
+  );
+
+  if (!model.cards.length) {
+    content.innerHTML = `<div class="empty-state"><div class="empty-icon">🍽️</div><p>Log foods, then link bowel movements or symptoms to build the Food Map.</p></div>`;
+    return;
+  }
+  if (!cards.length) {
+    content.innerHTML = `<div class="empty-state"><div class="empty-icon">🔎</div><p>No foods match this filter yet.</p></div>`;
+    return;
+  }
+
+  const sections = [
+    ['trigger', 'Possible triggers', '🚩', true],
+    ['watch', 'Watch closely', '⚠️', true],
+    ['ok', 'Seems OK', '✅', false],
+    ['unknown', 'Need more logs', '🧩', false]
+  ].map(([status, title, icon, open]) => {
+    const items = cards.filter(card => card.status === status);
+    if (!items.length) return '';
+    return `
+      <details class="food-group" ${open ? 'open' : ''}>
+        <summary>
+          <span class="food-group-label"><span>${icon}</span><strong>${escapeHTML(title)}</strong></span>
+          <span class="food-group-count">${items.length}</span>
+        </summary>
+        <div class="food-group-body">${items.map(foodCardHTML).join('')}</div>
+      </details>
+    `;
+  }).filter(Boolean).join('');
+
+  content.innerHTML = sections;
+}
+
 // ─── Day switching ─────────────────────────────────────────────────────────────
 function switchDay(key) {
   if (!allDays[key]) allDays[key] = [];
@@ -1833,7 +2480,7 @@ function openModal(type, entryId = null) {
   body.querySelectorAll('.chip').forEach(c => {
     c.addEventListener('click', () => {
       const grp = c.dataset.group;
-      if (grp) {
+      if (grp && c.dataset.multi !== 'true') {
         body.querySelectorAll(`.chip[data-group="${grp}"]`).forEach(x => x.classList.remove('selected'));
       }
       c.classList.toggle('selected');
@@ -1876,6 +2523,14 @@ function selectChip(group, value) {
   if (match) match.classList.add('selected');
 }
 
+function selectChipsByValue(group, values) {
+  const selected = new Set(Array.isArray(values) ? values.map(String) : []);
+  if (!selected.size) return;
+  document.querySelectorAll(`.chip[data-group="${group}"]`).forEach(chip => {
+    if (selected.has(chip.dataset.value || chip.textContent)) chip.classList.add('selected');
+  });
+}
+
 function selectUrgency(value) {
   if (!value) return;
   const buttons = Array.from(document.querySelectorAll('.urgency-btn'));
@@ -1886,6 +2541,49 @@ function selectUrgency(value) {
   }
 }
 
+function entryDateTime(dateKey, time) {
+  const [y, m, d] = String(dateKey || currentDay).split('-').map(Number);
+  const [hh, mm] = String(time || '00:00').split(':').map(Number);
+  return Date.UTC(y || 1970, (m || 1) - 1, d || 1, hh || 0, mm || 0);
+}
+
+function allEntriesWithDates() {
+  return Object.keys(allDays).flatMap(dateKey =>
+    (allDays[dateKey] || []).map(entry => ({ ...entry, dateKey }))
+  ).sort((a, b) => entryDateTime(a.dateKey, a.time) - entryDateTime(b.dateKey, b.time));
+}
+
+function recentFoodEntries(beforeTime, hours = 12) {
+  const cutoff = entryDateTime(currentDay, beforeTime || currentBahrainTime());
+  const earliest = cutoff - hours * 60 * 60 * 1000;
+  return allEntriesWithDates()
+    .filter(entry => entry.type === 'food')
+    .filter(entry => entry.data?.ftype !== 'Fluid' || entry.data?.item)
+    .filter(entry => {
+      const ts = entryDateTime(entry.dateKey, entry.time);
+      return ts <= cutoff && ts >= earliest;
+    })
+    .slice(-8)
+    .reverse();
+}
+
+function recentFoodLinkHTML(timeStr) {
+  const foods = recentFoodEntries(timeStr, 12);
+  if (!foods.length) return '';
+  return `
+    <div class="form-group">
+      <label class="form-label">Recent foods possibly related</label>
+      <div class="chip-group">
+        ${foods.map(entry => {
+          const label = `${entry.data?.item || 'Food'} · ${entry.time || ''}`;
+          return `<button class="chip" data-group="recent_food_ids" data-multi="true" data-value="${escapeHTML(entry.id)}">${escapeHTML(label)}</button>`;
+        }).join('')}
+      </div>
+      <p class="food-link-help">Choose any foods that may be connected. Leave blank if unsure.</p>
+    </div>
+  `;
+}
+
 function fillForm(type, entry) {
   const d = entry.data || {};
   setFieldValue('f_time', entry.time);
@@ -1894,13 +2592,15 @@ function fillForm(type, entry) {
     selectUrgency(d.urgency);
     selectChip('gas', d.gas);
     selectChip('blood', d.blood);
+    selectChipsByValue('recent_food_ids', d.recent_food_ids);
     setFieldValue('f_notes', d.notes);
   } else if (type === 'food') {
     setFieldValue('f_item', d.item);
     setFieldValue('f_amount', d.amount);
+    setFieldValue('f_ingredients', d.ingredients);
     setFieldValue('f_fluid_ml', d.fluid_ml);
     selectChip('ftype', d.ftype);
-    selectChip('tolerated', d.tolerated);
+    selectChip('trial_status', d.trial_status || (d.tolerated ? 'Usual' : ''));
     setFieldValue('f_notes', d.notes);
   } else if (type === 'med') {
     setFieldValue('f_name', d.name);
@@ -1914,6 +2614,7 @@ function fillForm(type, entry) {
       setFieldValue('f_custom', d.symptom);
     }
     selectUrgency(d.severity);
+    selectChipsByValue('recent_food_ids', d.recent_food_ids);
     setFieldValue('f_notes', d.notes);
   } else if (type === 'sleep') {
     setFieldValue('f_bedtime', d.bedtime);
@@ -1960,6 +2661,7 @@ function buildForm(type, timeStr) {
         ${['No','A little','Yes'].map(c=>`<button class="chip" data-group="blood">${c}</button>`).join('')}
       </div>
     </div>
+    ${recentFoodLinkHTML(timeStr)}
     <div class="form-group">
       <label class="form-label">Notes (optional)</label>
       <textarea class="form-textarea" id="f_notes" placeholder="e.g. cramping before, took a while..."></textarea>
@@ -1982,6 +2684,10 @@ function buildForm(type, timeStr) {
       <input class="form-input" type="text" id="f_amount" placeholder="e.g. 200ml, 1 cup, 1 bowl">
     </div>
     <div class="form-group">
+      <label class="form-label">Main ingredients (optional)</label>
+      <input class="form-input" type="text" id="f_ingredients" placeholder="e.g. rice, chicken, milk, banana">
+    </div>
+    <div class="form-group">
       <label class="form-label">Fluid amount (ml)</label>
       <input class="form-input" type="number" id="f_fluid_ml" min="0" step="10" placeholder="Only for drinks / fluids">
     </div>
@@ -1992,10 +2698,11 @@ function buildForm(type, timeStr) {
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Tolerated well?</label>
+      <label class="form-label">Food trial</label>
       <div class="chip-group">
-        ${['Yes','Partly','No'].map(c=>`<button class="chip" data-group="tolerated">${c}</button>`).join('')}
+        ${['Usual','Testing new','Unsure'].map(c=>`<button class="chip" data-group="trial_status">${c}</button>`).join('')}
       </div>
+      <p class="food-link-help">Tolerance is judged later from bowel movement and symptom logs.</p>
     </div>
     <div class="form-group">
       <label class="form-label">Notes (optional)</label>
@@ -2053,6 +2760,7 @@ function buildForm(type, timeStr) {
         ${[1,2,3,4,5].map(n=>`<button class="urgency-btn">${n}</button>`).join('')}
       </div>
     </div>
+    ${recentFoodLinkHTML(timeStr)}
     <div class="form-group">
       <label class="form-label">Notes (optional)</label>
       <textarea class="form-textarea" id="f_notes" placeholder="Any triggers? What helped?"></textarea>
@@ -2136,6 +2844,12 @@ function getSelected(group) {
   return el ? el.textContent : '';
 }
 
+function getSelectedValues(group) {
+  return Array.from(document.querySelectorAll(`.chip[data-group="${group}"].selected`))
+    .map(el => el.dataset.value || el.textContent)
+    .filter(Boolean);
+}
+
 function getUrgency() {
   const el = document.querySelector('.urgency-btn[data-selected="true"]');
   return el ? el.textContent : '';
@@ -2153,15 +2867,17 @@ function submitEntry(type) {
       urgency: getUrgency(),
       gas: getSelected('gas'),
       blood: getSelected('blood'),
+      recent_food_ids: getSelectedValues('recent_food_ids'),
       notes: (document.getElementById('f_notes')||{}).value || ''
     };
   } else if (type === 'food') {
     data = {
       item: (document.getElementById('f_item')||{}).value || '',
       amount: (document.getElementById('f_amount')||{}).value || '',
+      ingredients: (document.getElementById('f_ingredients')||{}).value || '',
       fluid_ml: (document.getElementById('f_fluid_ml')||{}).value || '',
       ftype: getSelected('ftype'),
-      tolerated: getSelected('tolerated'),
+      trial_status: getSelected('trial_status'),
       notes: (document.getElementById('f_notes')||{}).value || ''
     };
   } else if (type === 'med') {
@@ -2175,6 +2891,7 @@ function submitEntry(type) {
     data = {
       symptom: getSelected('symptom') === 'Other' && custom ? custom : (getSelected('symptom') || custom),
       severity: getUrgency(),
+      recent_food_ids: getSelectedValues('recent_food_ids'),
       notes: (document.getElementById('f_notes')||{}).value || ''
     };
   } else if (type === 'sleep') {
@@ -2310,17 +3027,24 @@ function entryReportDetails(entry) {
     d.urgency ? `urgency ${d.urgency}/5` : '',
     d.gas ? `gas ${d.gas}` : '',
     d.blood ? `blood ${d.blood}` : '',
+    Array.isArray(d.recent_food_ids) && d.recent_food_ids.length ? `${d.recent_food_ids.length} linked food(s)` : '',
     d.notes || ''
   ].filter(Boolean).join('; ');
   if (entry.type === 'food') return [
     d.ftype || '',
     d.amount || '',
+    d.ingredients ? `ingredients ${d.ingredients}` : '',
     d.fluid_ml ? `${d.fluid_ml} ml` : '',
+    d.trial_status ? `food trial ${d.trial_status}` : '',
     d.tolerated ? `tolerated ${d.tolerated}` : '',
     d.notes || ''
   ].filter(Boolean).join('; ');
   if (entry.type === 'med') return d.notes || '';
-  if (entry.type === 'symptom') return [d.severity ? `severity ${d.severity}/5` : '', d.notes || ''].filter(Boolean).join('; ');
+  if (entry.type === 'symptom') return [
+    d.severity ? `severity ${d.severity}/5` : '',
+    Array.isArray(d.recent_food_ids) && d.recent_food_ids.length ? `${d.recent_food_ids.length} linked food(s)` : '',
+    d.notes || ''
+  ].filter(Boolean).join('; ');
   if (entry.type === 'sleep') return [
     d.bedtime ? `bed ${d.bedtime}` : '',
     d.wakeup ? `wake ${d.wakeup}` : '',
