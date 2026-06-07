@@ -395,6 +395,12 @@
     padding: 14px;
   }
 
+  .advanced-group + .advanced-group {
+    border-top: 1px solid var(--border);
+    margin-top: 14px;
+    padding-top: 14px;
+  }
+
   .timeline-entry {
     display: flex;
     gap: 14px;
@@ -897,13 +903,13 @@
 <div class="panel-stack hidden" id="toolsView">
   <div class="tool-panel">
     <div class="tool-panel-title">Doctor report</div>
-    <p class="tool-panel-copy">Export a readable CSV for appointments or WhatsApp/email sharing.</p>
+    <p class="tool-panel-copy">Create a clean graphical report for appointments. Opens as a print-ready page that can be saved as PDF.</p>
     <div class="date-range">
       <input class="form-input" type="date" id="reportStart">
       <input class="form-input" type="date" id="reportEnd">
     </div>
     <div class="tool-actions">
-      <button class="tool-btn primary" onclick="exportDoctorCSV()">Export CSV</button>
+      <button class="tool-btn primary" onclick="exportDoctorPDF()">Doctor PDF</button>
       <button class="tool-btn" onclick="setReportToToday()">Today</button>
     </div>
   </div>
@@ -914,12 +920,21 @@
       <span id="advancedCaret">+</span>
     </button>
     <div class="advanced-body hidden" id="advancedTools">
-      <div class="tool-panel-title">Data backup</div>
-      <p class="tool-panel-copy">Usually not needed. Use before major changes or if asked for a recovery file.</p>
-      <div class="tool-actions">
-        <button class="tool-btn primary" onclick="exportBackup()">Export backup</button>
-        <button class="tool-btn" onclick="document.getElementById('backupFile').click()">Import backup</button>
-        <input class="file-input" id="backupFile" type="file" accept="application/json" onchange="importBackup(event)">
+      <div class="advanced-group">
+        <div class="tool-panel-title">Raw data</div>
+        <p class="tool-panel-copy">Spreadsheet export for anyone who asks for the underlying log rows.</p>
+        <div class="tool-actions">
+          <button class="tool-btn" onclick="exportDoctorCSV()">Export CSV</button>
+        </div>
+      </div>
+      <div class="advanced-group">
+        <div class="tool-panel-title">Data backup</div>
+        <p class="tool-panel-copy">Usually not needed. Use before major changes or if asked for a recovery file.</p>
+        <div class="tool-actions">
+          <button class="tool-btn" onclick="exportBackup()">Export backup</button>
+          <button class="tool-btn" onclick="document.getElementById('backupFile').click()">Import backup</button>
+          <input class="file-input" id="backupFile" type="file" accept="application/json" onchange="importBackup(event)">
+        </div>
       </div>
     </div>
   </div>
@@ -1924,10 +1939,517 @@ function entryReportDetails(entry) {
   return '';
 }
 
+function orderedReportRange() {
+  const startEl = document.getElementById('reportStart');
+  const endEl = document.getElementById('reportEnd');
+  let start = (startEl && startEl.value) || currentDay;
+  let end = (endEl && endEl.value) || start;
+  if (start > end) [start, end] = [end, start];
+  return { start, end };
+}
+
+function reportEntriesForRange(start, end) {
+  const keys = Object.keys(allDays).filter(key => key >= start && key <= end).sort();
+  const days = keys.map(key => ({
+    key,
+    entries: (allDays[key] || []).slice().sort((a,b) => (a.time || '').localeCompare(b.time || ''))
+  })).filter(day => day.entries.length > 0);
+  return {
+    days,
+    entries: days.flatMap(day => day.entries.map(entry => ({ ...entry, dateKey: day.key })))
+  };
+}
+
+function parseNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseSleepMinutes(value) {
+  const text = String(value || '').toLowerCase();
+  const hours = Number((text.match(/(\d+(?:\.\d+)?)\s*h/) || [])[1] || 0);
+  const minutes = Number((text.match(/(\d+)\s*m/) || [])[1] || 0);
+  if (hours || minutes) return Math.round(hours * 60 + minutes);
+  const numeric = Number(text);
+  return Number.isFinite(numeric) ? Math.round(numeric * 60) : 0;
+}
+
+function minutesLabel(minutes) {
+  if (!minutes) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+
+function reportTypeLabel(type) {
+  return {
+    poop: 'Bowel',
+    food: 'Food / fluid',
+    med: 'Medication',
+    symptom: 'Symptom',
+    sleep: 'Sleep',
+    note: 'Note',
+    activity: 'Activity'
+  }[type] || type || 'Entry';
+}
+
+function reportStatus(metrics) {
+  if (metrics.bloodCount || metrics.maxSymptom >= 4 || metrics.maxUrgency >= 5) {
+    return { label: 'Needs attention', tone: 'rose', text: 'Review the highlighted symptoms, urgency, or blood notes with the doctor.' };
+  }
+  if (metrics.looseBms >= 3 || (metrics.dayCount === 1 && metrics.fluids > 0 && metrics.fluids < 1200)) {
+    return { label: 'Watch closely', tone: 'amber', text: 'A few items may need monitoring, especially stools, fluids, or symptoms.' };
+  }
+  return { label: 'Stable log', tone: 'teal', text: 'No major warning pattern is visible from the logged entries.' };
+}
+
+function summarizeReport(days, entries) {
+  const dayStats = days.map(day => {
+    const entriesForDay = day.entries;
+    const bms = entriesForDay.filter(e => e.type === 'poop');
+    const symptoms = entriesForDay.filter(e => e.type === 'symptom');
+    const fluids = entriesForDay
+      .filter(e => e.type === 'food')
+      .reduce((sum, e) => sum + parseNumber(e.data?.fluid_ml), 0);
+    const maxSymptom = Math.max(0, ...symptoms.map(e => parseNumber(e.data?.severity)));
+    return { key: day.key, bms: bms.length, fluids, maxSymptom };
+  });
+
+  const bms = entries.filter(e => e.type === 'poop');
+  const symptoms = entries.filter(e => e.type === 'symptom');
+  const sleepEntries = entries.filter(e => e.type === 'sleep');
+  const sleepMinutes = sleepEntries.map(e => parseSleepMinutes(e.data?.total)).filter(Boolean);
+  const metrics = {
+    dayCount: days.length,
+    entryCount: entries.length,
+    bms: bms.length,
+    looseBms: bms.filter(e => /loose|watery/i.test(e.data?.consistency || '')).length,
+    bloodCount: bms.filter(e => e.data?.blood && e.data.blood !== 'No').length,
+    maxUrgency: Math.max(0, ...bms.map(e => parseNumber(e.data?.urgency))),
+    meals: entries.filter(e => e.type === 'food' && e.data?.ftype !== 'Fluid').length,
+    fluids: entries.filter(e => e.type === 'food').reduce((sum, e) => sum + parseNumber(e.data?.fluid_ml), 0),
+    meds: entries.filter(e => e.type === 'med').length,
+    maxSymptom: Math.max(0, ...symptoms.map(e => parseNumber(e.data?.severity))),
+    avgSleep: sleepMinutes.length ? Math.round(sleepMinutes.reduce((sum, m) => sum + m, 0) / sleepMinutes.length) : 0,
+    dayStats
+  };
+  metrics.status = reportStatus(metrics);
+  return metrics;
+}
+
+function reportBarChart(title, subtitle, rows, valueKey, unit) {
+  const max = Math.max(1, ...rows.map(row => row[valueKey] || 0));
+  const items = rows.map(row => {
+    const value = row[valueKey] || 0;
+    const width = Math.max(value ? 8 : 0, Math.round((value / max) * 100));
+    const date = formatBahrainDate(row.key, { day: 'numeric', month: 'short' });
+    const displayValue = value ? `${value}${unit && unit.startsWith('/') ? unit : unit ? ` ${unit}` : ''}` : '—';
+    return `
+      <div class="chart-row">
+        <div class="chart-label">${escapeHTML(date)}</div>
+        <div class="chart-track"><div class="chart-fill" style="width:${width}%"></div></div>
+        <div class="chart-value">${escapeHTML(displayValue)}</div>
+      </div>
+    `;
+  }).join('');
+  return `
+    <section class="chart-card">
+      <h2>${escapeHTML(title)}</h2>
+      <p>${escapeHTML(subtitle)}</p>
+      <div class="chart-rows">${items}</div>
+    </section>
+  `;
+}
+
+function buildReportTimeline(days) {
+  return days.map(day => {
+    const events = day.entries.map(entry => `
+      <div class="timeline-dot tone-${escapeHTML(entry.type)}" title="${escapeHTML(reportTypeLabel(entry.type))}">
+        <span>${escapeHTML(entry.time || '')}</span>
+      </div>
+    `).join('');
+    return `
+      <div class="report-day-line">
+        <div class="report-day-label">
+          <strong>${escapeHTML(formatBahrainDate(day.key, { day: 'numeric', month: 'short' }))}</strong>
+          <span>Day ${escapeHTML(dayNumber(day.key))}</span>
+        </div>
+        <div class="report-timeline">${events}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function buildDoctorReportHTML(start, end, days, entries) {
+  const metrics = summarizeReport(days, entries);
+  const rangeLabel = start === end
+    ? formatFullDate(start)
+    : `${formatBahrainDate(start, { day: 'numeric', month: 'short', year: 'numeric' })} to ${formatBahrainDate(end, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  const printedAt = new Date().toLocaleString('en-GB', { timeZone: APP_TIME_ZONE, dateStyle: 'medium', timeStyle: 'short' });
+  const keyNotes = [
+    metrics.bloodCount ? `${metrics.bloodCount} bowel entry marked with blood.` : '',
+    metrics.looseBms ? `${metrics.looseBms} loose/watery bowel movement${metrics.looseBms === 1 ? '' : 's'}.` : '',
+    metrics.maxSymptom ? `Highest symptom severity: ${metrics.maxSymptom}/5.` : '',
+    metrics.maxUrgency ? `Highest bowel urgency: ${metrics.maxUrgency}/5.` : '',
+    metrics.fluids ? `Logged fluids: ${metrics.fluids} ml.` : ''
+  ].filter(Boolean);
+  const detailRows = entries.map(entry => `
+    <tr>
+      <td>${escapeHTML(formatBahrainDate(entry.dateKey, { day: 'numeric', month: 'short' }))}</td>
+      <td>${escapeHTML(entry.time || '')}</td>
+      <td><span class="type-pill tone-${escapeHTML(entry.type)}">${escapeHTML(reportTypeLabel(entry.type))}</span></td>
+      <td>${escapeHTML(entryReportTitle(entry))}</td>
+      <td>${escapeHTML(entryReportDetails(entry))}</td>
+    </tr>
+  `).join('');
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recovery Report ${escapeHTML(start)} to ${escapeHTML(end)}</title>
+<style>
+  :root {
+    --paper: #fffdf8;
+    --ink: #1c1a17;
+    --muted: #6f6960;
+    --line: #e5ddd1;
+    --soft: #f7f1e8;
+    --teal: #2d7d6f;
+    --teal-soft: #e8f4f1;
+    --amber: #b8792c;
+    --amber-soft: #fbf3e8;
+    --rose: #b85c5c;
+    --rose-soft: #f9eded;
+    --violet: #6b5b8a;
+    --violet-soft: #f0edf6;
+    --slate: #4a6580;
+    --slate-soft: #edf1f5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #ece6dc;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.35;
+  }
+  .no-print {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(255, 253, 248, 0.92);
+    border-bottom: 1px solid var(--line);
+  }
+  button {
+    border: 1px solid var(--ink);
+    border-radius: 8px;
+    background: var(--ink);
+    color: white;
+    font: inherit;
+    font-weight: 700;
+    padding: 10px 14px;
+  }
+  button.secondary { background: transparent; color: var(--ink); }
+  main {
+    width: min(960px, calc(100% - 24px));
+    margin: 18px auto 34px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    box-shadow: 0 18px 42px rgba(28, 26, 23, 0.12);
+    padding: 28px;
+  }
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 18px;
+    align-items: start;
+    padding-bottom: 18px;
+    border-bottom: 2px solid var(--ink);
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 32px;
+    letter-spacing: 0;
+  }
+  .meta, p { color: var(--muted); margin: 0; }
+  .status-card {
+    min-width: 190px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    padding: 12px;
+    background: var(--soft);
+  }
+  .status-card strong {
+    display: block;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  .status-card.teal { background: var(--teal-soft); color: var(--teal); }
+  .status-card.amber { background: var(--amber-soft); color: var(--amber); }
+  .status-card.rose { background: var(--rose-soft); color: var(--rose); }
+  .status-card span { color: var(--ink); font-size: 13px; }
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+    margin: 18px 0;
+  }
+  .metric {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: white;
+    padding: 10px;
+  }
+  .metric small {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  .metric strong {
+    display: block;
+    font-size: 20px;
+    letter-spacing: 0;
+  }
+  .section-title {
+    margin: 20px 0 8px;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    color: var(--muted);
+  }
+  .note-box {
+    border-left: 4px solid var(--teal);
+    background: white;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .note-box ul {
+    margin: 0;
+    padding-left: 18px;
+  }
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .chart-card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: white;
+    padding: 12px;
+  }
+  .chart-card h2 {
+    margin: 0 0 3px;
+    font-size: 15px;
+  }
+  .chart-card p {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .chart-row {
+    display: grid;
+    grid-template-columns: 54px 1fr 58px;
+    gap: 8px;
+    align-items: center;
+    font-size: 11px;
+    margin-top: 7px;
+  }
+  .chart-track {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--soft);
+    overflow: hidden;
+  }
+  .chart-fill {
+    height: 100%;
+    min-width: 0;
+    background: var(--teal);
+    border-radius: inherit;
+  }
+  .chart-value { text-align: right; color: var(--muted); }
+  .report-day-line {
+    display: grid;
+    grid-template-columns: 86px 1fr;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: white;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .report-day-label strong, .report-day-label span {
+    display: block;
+  }
+  .report-day-label span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .report-timeline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    border-left: 1px solid var(--line);
+    padding-left: 10px;
+    flex-wrap: wrap;
+  }
+  .timeline-dot {
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    padding: 4px 7px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .type-pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .tone-poop, .tone-amber { background: var(--amber-soft); color: var(--amber); }
+  .tone-food, .tone-teal { background: var(--teal-soft); color: var(--teal); }
+  .tone-med, .tone-violet { background: var(--violet-soft); color: var(--violet); }
+  .tone-symptom, .tone-rose { background: var(--rose-soft); color: var(--rose); }
+  .tone-note, .tone-slate, .tone-activity { background: var(--slate-soft); color: var(--slate); }
+  .tone-sleep { background: #eef2ff; color: #5263a3; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 12px;
+  }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--line);
+    padding: 8px;
+  }
+  th {
+    background: var(--soft);
+    color: var(--muted);
+    font-size: 11px;
+  }
+  tr:last-child td { border-bottom: 0; }
+  footer {
+    margin-top: 18px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 11px;
+  }
+  @page { margin: 12mm; size: A4; }
+  @media print {
+    body { background: white; }
+    .no-print { display: none; }
+    main {
+      width: auto;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      box-shadow: none;
+    }
+    .chart-card, .report-day-line, .metric, table { break-inside: avoid; }
+  }
+  @media (max-width: 760px) {
+    main { padding: 18px; }
+    header, .chart-grid, .metric-grid { grid-template-columns: 1fr; }
+    .status-card { min-width: 0; }
+    .report-day-line { grid-template-columns: 1fr; }
+    .report-timeline { border-left: 0; padding-left: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="no-print">
+    <button onclick="window.print()">Print / Save PDF</button>
+    <button class="secondary" onclick="history.length > 1 ? history.back() : window.close()">Back to app</button>
+  </div>
+  <main>
+    <header>
+      <div>
+        <h1>Recovery Report</h1>
+        <p class="meta">Mohamed · ${escapeHTML(rangeLabel)} · ${escapeHTML(metrics.dayCount)} day${metrics.dayCount === 1 ? '' : 's'} logged</p>
+      </div>
+      <div class="status-card ${escapeHTML(metrics.status.tone)}">
+        <strong>${escapeHTML(metrics.status.label)}</strong>
+        <span>${escapeHTML(metrics.status.text)}</span>
+      </div>
+    </header>
+
+    <section class="metric-grid">
+      <div class="metric"><small>Bowel movements</small><strong>${escapeHTML(metrics.bms)}</strong></div>
+      <div class="metric"><small>Loose / watery</small><strong>${escapeHTML(metrics.looseBms)}</strong></div>
+      <div class="metric"><small>Max symptom</small><strong>${metrics.maxSymptom ? `${escapeHTML(metrics.maxSymptom)}/5` : '—'}</strong></div>
+      <div class="metric"><small>Fluids logged</small><strong>${metrics.fluids ? `${escapeHTML(metrics.fluids)} ml` : '—'}</strong></div>
+      <div class="metric"><small>Medication logs</small><strong>${escapeHTML(metrics.meds)}</strong></div>
+      <div class="metric"><small>Average sleep</small><strong>${escapeHTML(minutesLabel(metrics.avgSleep))}</strong></div>
+    </section>
+
+    <h2 class="section-title">Key points</h2>
+    <div class="note-box">
+      ${keyNotes.length ? `<ul>${keyNotes.map(note => `<li>${escapeHTML(note)}</li>`).join('')}</ul>` : '<p>No notable warning pattern in the selected logged entries.</p>'}
+    </div>
+
+    <h2 class="section-title">Small charts</h2>
+    <div class="chart-grid">
+      ${reportBarChart('Bowel movements', 'Count per logged day', metrics.dayStats, 'bms', '')}
+      ${reportBarChart('Fluids', 'Logged intake per day', metrics.dayStats, 'fluids', 'ml')}
+      ${reportBarChart('Symptoms', 'Highest severity per day', metrics.dayStats, 'maxSymptom', '/5')}
+    </div>
+
+    <h2 class="section-title">Visual timeline</h2>
+    ${buildReportTimeline(days)}
+
+    <h2 class="section-title">Detailed log</h2>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Time</th><th>Type</th><th>Entry</th><th>Details</th></tr>
+      </thead>
+      <tbody>${detailRows}</tbody>
+    </table>
+
+    <footer>
+      Generated ${escapeHTML(printedAt)} Bahrain time (GMT+3). This report summarizes logged observations and is not medical advice.
+    </footer>
+  </main>
+<script>
+  window.addEventListener('load', () => setTimeout(() => window.print(), 500));
+<\/script>
+</body>
+</html>`;
+}
+
+function exportDoctorPDF() {
+  const { start, end } = orderedReportRange();
+  const { days, entries } = reportEntriesForRange(start, end);
+  if (!entries.length) {
+    alert('No entries in that date range.');
+    return;
+  }
+  const html = buildDoctorReportHTML(start, end, days, entries);
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  window.location.href = url;
+}
+
 function exportDoctorCSV() {
-  const start = document.getElementById('reportStart').value || currentDay;
-  const end = document.getElementById('reportEnd').value || start;
-  const keys = getDayKeys().filter(key => key >= start && key <= end).sort();
+  const { start, end } = orderedReportRange();
+  const keys = Object.keys(allDays).filter(key => key >= start && key <= end).sort();
   const rows = [['Date', 'Recovery day', 'Time', 'Type', 'Title', 'Details']];
   keys.forEach(key => {
     (allDays[key] || []).slice().sort((a,b) => a.time.localeCompare(b.time)).forEach(entry => {
