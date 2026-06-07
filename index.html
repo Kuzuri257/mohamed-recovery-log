@@ -379,6 +379,35 @@
     margin-bottom: 10px;
   }
 
+  .ai-detail {
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+    padding-top: 8px;
+  }
+
+  .ai-detail summary {
+    color: var(--accent-teal);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    list-style: none;
+  }
+
+  .ai-detail summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .ai-detail summary::after {
+    content: '+';
+    float: right;
+    color: var(--ink-faint);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .ai-detail[open] summary::after {
+    content: '-';
+  }
+
   .ai-list-title {
     color: var(--ink-light);
     font-size: 11px;
@@ -412,6 +441,16 @@
     font-weight: 700;
     padding: 4px 8px;
     margin-top: 8px;
+  }
+
+  .entry-ai-result {
+    margin-top: 8px;
+  }
+
+  .entry-ai-result .ai-result {
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+    padding-top: 8px;
   }
 
   .tool-btn:disabled,
@@ -1334,49 +1373,52 @@ function setAIButtonLoading(isLoading) {
   if (askBtn) askBtn.disabled = isLoading;
 }
 
-function showAIError(message) {
-  const result = document.getElementById('aiSummaryResult');
+function showAIError(message, targetId = 'aiSummaryResult') {
+  const result = document.getElementById(targetId);
   if (!result) return;
   result.innerHTML = `<div class="ai-error">${escapeHTML(message)}</div>`;
 }
 
-function showAISummary(result) {
-  const target = document.getElementById('aiSummaryResult');
+function showAISummary(result, targetId = 'aiSummaryResult') {
+  const target = document.getElementById(targetId);
   if (!target) return;
   const data = result || {};
+  const detailHTML = [
+    renderAIList('Insights', data.insights),
+    renderAIList('Guidance', data.guidance),
+    renderAIList('Improve tomorrow’s log', data.log_quality),
+    renderAIList('Doctor questions', data.doctor_questions),
+    renderAIList('Red flags to watch', data.red_flags),
+    renderAIList('Ask next', data.follow_up_questions)
+  ].filter(Boolean).join('');
   target.innerHTML = `
     <div class="ai-result">
       <div class="ai-status-pill">${escapeHTML(data.status || 'Summary')}</div>
       ${data.answer ? `<div class="ai-summary-text">${escapeHTML(data.answer)}</div>` : ''}
       <div class="ai-summary-text">${escapeHTML(data.summary || 'No summary returned.')}</div>
-      ${renderAIList('Insights', data.insights)}
-      ${renderAIList('Guidance', data.guidance)}
-      ${renderAIList('Improve tomorrow’s log', data.log_quality)}
-      ${renderAIList('Doctor questions', data.doctor_questions)}
-      ${renderAIList('Red flags to watch', data.red_flags)}
-      ${renderAIList('Ask next', data.follow_up_questions)}
+      ${detailHTML ? `<details class="ai-detail"><summary>Show details</summary>${detailHTML}</details>` : ''}
     </div>
   `;
 }
 
-async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is reading today’s log and recent history...') {
+async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is reading today’s log and recent history...', targetId = 'aiSummaryResult') {
   if (!supabaseClient) {
-    showAIError('Cloud sync is not configured yet.');
+    showAIError('Cloud sync is not configured yet.', targetId);
     return null;
   }
   if (!currentUser) {
     toggleSyncPanel(true);
-    showAIError('Sign in first, then Claude can use the synced log and history.');
+    showAIError('Sign in first, then Claude can use the synced log and history.', targetId);
     return null;
   }
   const entries = allDays[currentDay] || [];
   if (!entries.length) {
-    showAIError('Add at least one entry for this day before asking Claude.');
+    showAIError('Add at least one entry for this day before asking Claude.', targetId);
     return null;
   }
 
   setAIButtonLoading(true);
-  showAIError(loadingMessage);
+  showAIError(loadingMessage, targetId);
   try {
     await uploadLocalEntries();
     const { data, error } = await supabaseClient.functions.invoke('recovery-ai', {
@@ -1384,10 +1426,10 @@ async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is r
     });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
-    showAISummary(data?.result);
+    showAISummary(data?.result, targetId);
     return data?.result || null;
   } catch(e) {
-    showAIError(`AI summary failed: ${e.message || e}`);
+    showAIError(`AI summary failed: ${e.message || e}`, targetId);
     return null;
   } finally {
     setAIButtonLoading(false);
@@ -1414,7 +1456,12 @@ async function generateEntryInsight(button) {
     showAIError('Could not identify that entry.');
     return;
   }
-  await runRecoveryAI('entry', { entryId }, 'Claude is reviewing that entry with recent history...');
+  const targetId = `aiEntryResult-${entryId}`;
+  button.disabled = true;
+  button.textContent = 'Thinking...';
+  await runRecoveryAI('entry', { entryId }, 'Claude is reviewing that entry with recent history...', targetId);
+  button.disabled = false;
+  button.textContent = 'AI insight';
 }
 
 async function loadSyncConfig() {
@@ -1718,6 +1765,7 @@ function buildEntryHTML(e, i) {
         <div class="entry-title">${escapeHTML(title)}</div>
         ${tagsHTML ? `<div class="entry-tags">${tagsHTML}</div>` : ''}
         <button class="entry-ai-btn" data-entry-id="${escapeHTML(e.id)}" onclick="generateEntryInsight(this)">AI insight</button>
+        <div class="entry-ai-result" id="aiEntryResult-${escapeHTML(e.id)}"></div>
       </div>
     </div>
   `;
