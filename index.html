@@ -305,6 +305,93 @@
     margin-bottom: 12px;
   }
 
+  .ai-panel {
+    margin: 12px 20px 2px;
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .ai-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .ai-panel-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+
+  .ai-panel-copy {
+    color: var(--ink-light);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .ai-result {
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+
+  .ai-status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: var(--accent-teal-light);
+    color: var(--accent-teal);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    margin-bottom: 8px;
+  }
+
+  .ai-summary-text {
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
+  .ai-list-title {
+    color: var(--ink-light);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 10px 0 5px;
+  }
+
+  .ai-list {
+    display: grid;
+    gap: 5px;
+    padding-left: 16px;
+    color: var(--ink-light);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .ai-list li::marker {
+    color: var(--accent-teal);
+  }
+
+  .ai-error {
+    border-top: 1px solid var(--border);
+    color: var(--accent-rose);
+    font-size: 12px;
+    line-height: 1.45;
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+
   .tool-actions {
     display: flex;
     gap: 8px;
@@ -822,6 +909,11 @@
       margin-left: auto;
       margin-right: auto;
     }
+    .ai-panel {
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+    }
     .panel-stack {
       max-width: 680px;
       margin-left: auto;
@@ -892,6 +984,16 @@
 </div>
 
 <div id="logView">
+  <div class="ai-panel">
+    <div class="ai-panel-header">
+      <div>
+        <div class="ai-panel-title">AI recovery summary</div>
+        <p class="ai-panel-copy">Summarize today’s log with Claude. Uses the signed-in account and keeps the API key server-side.</p>
+      </div>
+      <button class="tool-btn primary" id="aiSummaryBtn" onclick="generateAISummary()">Summarize</button>
+    </div>
+    <div id="aiSummaryResult"></div>
+  </div>
   <div class="timeline" id="timeline">
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">📋</div>
@@ -1169,6 +1271,75 @@ function updateAuthUI() {
   signedIn.classList.toggle('hidden', !currentUser);
   if (emailLabel && currentUser) emailLabel.textContent = `Signed in as ${currentUser.email || 'Mohamed'}`;
   if (toggleBtn) toggleBtn.textContent = currentUser ? 'Account' : 'Sign in';
+}
+
+function renderAIList(title, items) {
+  if (!Array.isArray(items) || !items.length) return '';
+  return `
+    <div class="ai-list-title">${escapeHTML(title)}</div>
+    <ul class="ai-list">${items.map(item => `<li>${escapeHTML(item)}</li>`).join('')}</ul>
+  `;
+}
+
+function setAIButtonLoading(isLoading) {
+  const btn = document.getElementById('aiSummaryBtn');
+  if (!btn) return;
+  btn.disabled = isLoading;
+  btn.textContent = isLoading ? 'Summarizing...' : 'Summarize';
+}
+
+function showAIError(message) {
+  const result = document.getElementById('aiSummaryResult');
+  if (!result) return;
+  result.innerHTML = `<div class="ai-error">${escapeHTML(message)}</div>`;
+}
+
+function showAISummary(result) {
+  const target = document.getElementById('aiSummaryResult');
+  if (!target) return;
+  const data = result || {};
+  target.innerHTML = `
+    <div class="ai-result">
+      <div class="ai-status-pill">${escapeHTML(data.status || 'Summary')}</div>
+      <div class="ai-summary-text">${escapeHTML(data.summary || 'No summary returned.')}</div>
+      ${renderAIList('Guidance', data.guidance)}
+      ${renderAIList('Doctor questions', data.doctor_questions)}
+      ${renderAIList('Red flags to watch', data.red_flags)}
+    </div>
+  `;
+}
+
+async function generateAISummary() {
+  if (!supabaseClient) {
+    showAIError('Cloud sync is not configured yet.');
+    return;
+  }
+  if (!currentUser) {
+    toggleSyncPanel(true);
+    showAIError('Sign in first, then Claude can summarize the synced log.');
+    return;
+  }
+  const entries = allDays[currentDay] || [];
+  if (!entries.length) {
+    showAIError('Add at least one entry for this day before asking Claude to summarize it.');
+    return;
+  }
+
+  setAIButtonLoading(true);
+  showAIError('Claude is reading today’s log...');
+  try {
+    await uploadLocalEntries();
+    const { data, error } = await supabaseClient.functions.invoke('recovery-ai', {
+      body: { start: currentDay, end: currentDay }
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    showAISummary(data?.result);
+  } catch(e) {
+    showAIError(`AI summary failed: ${e.message || e}`);
+  } finally {
+    setAIButtonLoading(false);
+  }
 }
 
 async function loadSyncConfig() {
