@@ -858,7 +858,7 @@
         <input class="form-input" type="text" id="authCode" inputmode="numeric" placeholder="6-digit code from email">
       </div>
       <div class="tool-actions" style="margin-top:10px">
-        <button class="tool-btn primary" onclick="sendMagicLink()">Send code</button>
+        <button class="tool-btn primary" onclick="sendSignInCode()">Send code</button>
         <button class="tool-btn" onclick="verifyCode()">Verify</button>
       </div>
     </div>
@@ -1320,7 +1320,7 @@ async function applySupabaseUser(user) {
   }
 }
 
-async function sendMagicLink() {
+async function sendSignInCode() {
   if (!supabaseClient) {
     setAuthStatus('Supabase is not configured yet.');
     return;

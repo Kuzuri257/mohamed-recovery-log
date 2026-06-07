@@ -1,4 +1,4 @@
-const CACHE_NAME = 'recovery-log-v3';
+const CACHE_NAME = 'recovery-log-v4';
 const APP_SHELL = [
   './',
   './index.html',
