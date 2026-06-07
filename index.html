@@ -2327,12 +2327,13 @@ function buildReportTimeline(days) {
   }).join('');
 }
 
-function buildDoctorReportHTML(start, end, days, entries) {
+function buildDoctorReportHTML(start, end, days, entries, backUrl = appRedirectUrl()) {
   const metrics = summarizeReport(days, entries);
   const rangeLabel = start === end
     ? formatFullDate(start)
     : `${formatBahrainDate(start, { day: 'numeric', month: 'short', year: 'numeric' })} to ${formatBahrainDate(end, { day: 'numeric', month: 'short', year: 'numeric' })}`;
   const printedAt = new Date().toLocaleString('en-GB', { timeZone: APP_TIME_ZONE, dateStyle: 'medium', timeStyle: 'short' });
+  const safeBackUrl = JSON.stringify(backUrl);
   const keyNotes = [
     metrics.bloodCount ? `${metrics.bloodCount} bowel entry marked with blood.` : '',
     metrics.looseBms ? `${metrics.looseBms} loose/watery bowel movement${metrics.looseBms === 1 ? '' : 's'}.` : '',
@@ -2624,7 +2625,7 @@ function buildDoctorReportHTML(start, end, days, entries) {
 <body>
   <div class="no-print">
     <button onclick="window.print()">Print / Save PDF</button>
-    <button class="secondary" onclick="history.length > 1 ? history.back() : window.close()">Back to app</button>
+    <button class="secondary" onclick="location.href = ${safeBackUrl}">Back to app</button>
   </div>
   <main>
     <header>
@@ -2689,9 +2690,9 @@ function exportDoctorPDF() {
     return;
   }
   const html = buildDoctorReportHTML(start, end, days, entries);
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  window.location.href = url;
+  document.open();
+  document.write(html);
+  document.close();
 }
 
 function exportDoctorCSV() {

@@ -124,7 +124,8 @@ function buildPrompt(
 Important safety rules:
 - Do not diagnose.
 - Do not change medication instructions.
-- Do not say something is safe.
+- Do not say something is safe, normal, typical, or expected.
+- Do not reassure about incision healing or symptoms. Say what was logged and what to monitor.
 - Give practical, cautious guidance only.
 - Mention urgent red flags only when relevant from the log or history, and phrase them as "seek medical advice urgently if..." not as a diagnosis.
 - Keep the tone calm, simple, and useful for a non-technical patient.
@@ -191,7 +192,7 @@ async function getEntries(req: Request, start: string, end: string) {
 
 async function callClaude(prompt: string) {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-  const model = Deno.env.get("ANTHROPIC_MODEL") || "claude-3-haiku-20240307";
+  const model = Deno.env.get("ANTHROPIC_MODEL") || "claude-haiku-4-5-20251001";
 
   if (!apiKey) throw new Error("Claude API key is not configured yet.");
 
@@ -224,6 +225,13 @@ async function callClaude(prompt: string) {
   const text = body?.content?.find((part: { type?: string; text?: string }) => part.type === "text")?.text;
   if (!text) throw new Error("Claude returned an empty response.");
   return text;
+}
+
+function parseClaudeJson(text: string) {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced ? fenced[1].trim() : trimmed;
+  return JSON.parse(candidate);
 }
 
 Deno.serve(async req => {
@@ -259,7 +267,7 @@ Deno.serve(async req => {
     const text = await callClaude(buildPrompt(mode, orderedStart, orderedEnd, focusEntries, historyEntries, question, entryId));
     let parsed: unknown;
     try {
-      parsed = JSON.parse(text);
+      parsed = parseClaudeJson(text);
     } catch {
       parsed = {
         status: "Summary generated",
