@@ -335,6 +335,19 @@
     line-height: 1.4;
   }
 
+  .ai-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .ai-question-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+  }
+
   .ai-result {
     border-top: 1px solid var(--border);
     margin-top: 10px;
@@ -381,6 +394,19 @@
 
   .ai-list li::marker {
     color: var(--accent-teal);
+  }
+
+  .entry-ai-btn {
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--accent-teal-light);
+    color: var(--accent-teal);
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    margin-top: 8px;
   }
 
   .ai-error {
@@ -987,10 +1013,16 @@
   <div class="ai-panel">
     <div class="ai-panel-header">
       <div>
-        <div class="ai-panel-title">AI recovery summary</div>
-        <p class="ai-panel-copy">Summarize today’s log with Claude. Uses the signed-in account and keeps the API key server-side.</p>
+        <div class="ai-panel-title">Recovery AI</div>
+        <p class="ai-panel-copy">Uses today’s log plus recent history. Summaries, questions, and entry feedback run through Claude server-side.</p>
       </div>
-      <button class="tool-btn primary" id="aiSummaryBtn" onclick="generateAISummary()">Summarize</button>
+    </div>
+    <div class="ai-actions">
+      <button class="tool-btn primary" id="aiSummaryBtn" onclick="generateAISummary()">Summarize today</button>
+    </div>
+    <div class="ai-question-row">
+      <input class="form-input" id="aiQuestion" type="text" placeholder="Ask about today, trends, food, BM, sleep...">
+      <button class="tool-btn" id="aiAskBtn" onclick="askAIQuestion()">Ask</button>
     </div>
     <div id="aiSummaryResult"></div>
   </div>
@@ -1282,10 +1314,13 @@ function renderAIList(title, items) {
 }
 
 function setAIButtonLoading(isLoading) {
-  const btn = document.getElementById('aiSummaryBtn');
-  if (!btn) return;
-  btn.disabled = isLoading;
-  btn.textContent = isLoading ? 'Summarizing...' : 'Summarize';
+  const summaryBtn = document.getElementById('aiSummaryBtn');
+  const askBtn = document.getElementById('aiAskBtn');
+  if (summaryBtn) {
+    summaryBtn.disabled = isLoading;
+    summaryBtn.textContent = isLoading ? 'Thinking...' : 'Summarize today';
+  }
+  if (askBtn) askBtn.disabled = isLoading;
 }
 
 function showAIError(message) {
@@ -1301,45 +1336,74 @@ function showAISummary(result) {
   target.innerHTML = `
     <div class="ai-result">
       <div class="ai-status-pill">${escapeHTML(data.status || 'Summary')}</div>
+      ${data.answer ? `<div class="ai-summary-text">${escapeHTML(data.answer)}</div>` : ''}
       <div class="ai-summary-text">${escapeHTML(data.summary || 'No summary returned.')}</div>
+      ${renderAIList('Insights', data.insights)}
       ${renderAIList('Guidance', data.guidance)}
+      ${renderAIList('Improve tomorrow’s log', data.log_quality)}
       ${renderAIList('Doctor questions', data.doctor_questions)}
       ${renderAIList('Red flags to watch', data.red_flags)}
+      ${renderAIList('Ask next', data.follow_up_questions)}
     </div>
   `;
 }
 
-async function generateAISummary() {
+async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is reading today’s log and recent history...') {
   if (!supabaseClient) {
     showAIError('Cloud sync is not configured yet.');
-    return;
+    return null;
   }
   if (!currentUser) {
     toggleSyncPanel(true);
-    showAIError('Sign in first, then Claude can summarize the synced log.');
-    return;
+    showAIError('Sign in first, then Claude can use the synced log and history.');
+    return null;
   }
   const entries = allDays[currentDay] || [];
   if (!entries.length) {
-    showAIError('Add at least one entry for this day before asking Claude to summarize it.');
-    return;
+    showAIError('Add at least one entry for this day before asking Claude.');
+    return null;
   }
 
   setAIButtonLoading(true);
-  showAIError('Claude is reading today’s log...');
+  showAIError(loadingMessage);
   try {
     await uploadLocalEntries();
     const { data, error } = await supabaseClient.functions.invoke('recovery-ai', {
-      body: { start: currentDay, end: currentDay }
+      body: { mode, start: currentDay, end: currentDay, ...extraBody }
     });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
     showAISummary(data?.result);
+    return data?.result || null;
   } catch(e) {
     showAIError(`AI summary failed: ${e.message || e}`);
+    return null;
   } finally {
     setAIButtonLoading(false);
   }
+}
+
+async function generateAISummary() {
+  await runRecoveryAI('day');
+}
+
+async function askAIQuestion() {
+  const input = document.getElementById('aiQuestion');
+  const question = (input?.value || '').trim();
+  if (!question) {
+    showAIError('Type a question first.');
+    return;
+  }
+  await runRecoveryAI('question', { question }, 'Claude is checking today against recent history...');
+}
+
+async function generateEntryInsight(button) {
+  const entryId = button?.dataset?.entryId || '';
+  if (!entryId) {
+    showAIError('Could not identify that entry.');
+    return;
+  }
+  await runRecoveryAI('entry', { entryId }, 'Claude is reviewing that entry with recent history...');
 }
 
 async function loadSyncConfig() {
@@ -1642,6 +1706,7 @@ function buildEntryHTML(e, i) {
         <div class="entry-time">${escapeHTML(e.time)}</div>
         <div class="entry-title">${escapeHTML(title)}</div>
         ${tagsHTML ? `<div class="entry-tags">${tagsHTML}</div>` : ''}
+        <button class="entry-ai-btn" data-entry-id="${escapeHTML(e.id)}" onclick="generateEntryInsight(this)">AI insight</button>
       </div>
     </div>
   `;
