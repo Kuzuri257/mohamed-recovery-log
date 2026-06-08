@@ -51,27 +51,76 @@
   }
 
   :root[data-theme="night"] {
-    --cream: #101716;
-    --warm-white: #17211F;
-    --ink: #F4EEE5;
-    --ink-light: #D1C7BA;
-    --ink-faint: #9D958B;
-    --border: #2B3A36;
-    --border-strong: #465952;
-    --accent-teal: #61C5B6;
-    --accent-teal-light: #1E3D39;
-    --accent-amber: #F0B35F;
-    --accent-amber-light: #3D2E1C;
-    --accent-rose: #E58A8A;
-    --accent-rose-light: #402626;
-    --accent-violet: #BBA8E0;
-    --accent-violet-light: #302A3E;
-    --accent-slate: #9CB6CE;
-    --accent-slate-light: #243240;
+    --cream: #121212;
+    --warm-white: #1E1E1E;
+    --ink: #EDE7DE;
+    --ink-light: #C9C3BA;
+    --ink-faint: #A09A92;
+    --border: #303030;
+    --border-strong: #4A4A4A;
+    --accent-teal: #7DD3C7;
+    --accent-teal-light: #123A36;
+    --accent-amber: #F3BE72;
+    --accent-amber-light: #3A2A16;
+    --accent-rose: #F09A9A;
+    --accent-rose-light: #3B2020;
+    --accent-violet: #C7B8EA;
+    --accent-violet-light: #302943;
+    --accent-slate: #B0C4D8;
+    --accent-slate-light: #24313D;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.28), 0 1px 2px rgba(0,0,0,0.20);
     --shadow-md: 0 4px 14px rgba(0,0,0,0.30), 0 2px 5px rgba(0,0,0,0.22);
     --shadow-lg: 0 16px 38px rgba(0,0,0,0.38), 0 6px 12px rgba(0,0,0,0.26);
     color-scheme: dark;
+  }
+
+  :root[data-theme="night"] .header,
+  :root[data-theme="night"] .day-nav,
+  :root[data-theme="night"] .quick-log-bar {
+    background: #1A1A1A;
+  }
+
+  :root[data-theme="night"] .form-input,
+  :root[data-theme="night"] .form-select,
+  :root[data-theme="night"] .form-textarea {
+    background: #242424;
+    border-color: #575757;
+    color: var(--ink);
+  }
+
+  :root[data-theme="night"] .form-input:focus,
+  :root[data-theme="night"] .form-select:focus,
+  :root[data-theme="night"] .form-textarea:focus {
+    background: #2B2B2B;
+    border-color: var(--accent-teal);
+  }
+
+  :root[data-theme="night"] .form-input::placeholder,
+  :root[data-theme="night"] .form-textarea::placeholder {
+    color: #7F7A72;
+    opacity: 1;
+  }
+
+  :root[data-theme="night"] input:-webkit-autofill,
+  :root[data-theme="night"] textarea:-webkit-autofill {
+    -webkit-text-fill-color: var(--ink);
+    box-shadow: 0 0 0 1000px #242424 inset;
+    caret-color: var(--ink);
+  }
+
+  :root[data-theme="night"] .tab-btn.active,
+  :root[data-theme="night"] .day-tile.active,
+  :root[data-theme="night"] .food-filter-chip.active,
+  :root[data-theme="night"] .tool-btn.primary,
+  :root[data-theme="night"] .btn-submit,
+  :root[data-theme="night"] .fab-main {
+    background: #EDE7DE;
+    border-color: #EDE7DE;
+    color: #121212;
+  }
+
+  :root[data-theme="night"] .day-tile.active .day-signal {
+    background: #121212;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1663,7 +1712,7 @@ function applyTheme(theme, persist = true) {
     toggle.setAttribute('aria-label', nextTheme === 'night' ? 'Switch to day mode' : 'Switch to night mode');
   }
   const meta = document.getElementById('themeColorMeta');
-  if (meta) meta.setAttribute('content', nextTheme === 'night' ? '#101716' : '#FAF7F2');
+  if (meta) meta.setAttribute('content', nextTheme === 'night' ? '#121212' : '#FAF7F2');
 }
 
 function toggleTheme() {
