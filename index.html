@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#FAF7F2">
+<meta name="theme-color" id="themeColorMeta" content="#FAF7F2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="RecoveryLog">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -13,6 +13,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="supabase-config.js"></script>
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  (function() {
+    try {
+      var savedTheme = localStorage.getItem('recovery-log-theme');
+      var prefersNight = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (savedTheme === 'night' || (!savedTheme && prefersNight)) {
+        document.documentElement.dataset.theme = 'night';
+      }
+    } catch(e) {}
+  })();
+</script>
 <style>
   :root {
     --cream: #FAF7F2;
@@ -37,6 +48,30 @@
     --shadow-lg: 0 12px 32px rgba(28,26,23,0.10), 0 4px 8px rgba(28,26,23,0.06);
     --radius: 12px;
     --radius-sm: 8px;
+  }
+
+  :root[data-theme="night"] {
+    --cream: #101716;
+    --warm-white: #17211F;
+    --ink: #F4EEE5;
+    --ink-light: #D1C7BA;
+    --ink-faint: #9D958B;
+    --border: #2B3A36;
+    --border-strong: #465952;
+    --accent-teal: #61C5B6;
+    --accent-teal-light: #1E3D39;
+    --accent-amber: #F0B35F;
+    --accent-amber-light: #3D2E1C;
+    --accent-rose: #E58A8A;
+    --accent-rose-light: #402626;
+    --accent-violet: #BBA8E0;
+    --accent-violet-light: #302A3E;
+    --accent-slate: #9CB6CE;
+    --accent-slate-light: #243240;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.28), 0 1px 2px rgba(0,0,0,0.20);
+    --shadow-md: 0 4px 14px rgba(0,0,0,0.30), 0 2px 5px rgba(0,0,0,0.22);
+    --shadow-lg: 0 16px 38px rgba(0,0,0,0.38), 0 6px 12px rgba(0,0,0,0.26);
+    color-scheme: dark;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -71,6 +106,7 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 4px;
+    gap: 12px;
   }
 
   .app-name {
@@ -94,6 +130,26 @@
     padding: 4px 10px;
     border-radius: 20px;
     letter-spacing: 0.5px;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .theme-toggle {
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--cream);
+    color: var(--ink-light);
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 62px;
+    padding: 5px 9px;
   }
 
   .header-date {
@@ -716,7 +772,7 @@
   .food-dot-on { color: var(--accent-rose); }
   .food-dot-mid { color: var(--accent-amber); }
   .food-dot-ok { color: var(--accent-teal); }
-  .food-dot-off { color: #D8D0C6; }
+  .food-dot-off { color: var(--border-strong); }
 
   .food-score {
     color: var(--ink-faint);
@@ -728,7 +784,7 @@
   .food-meter {
     height: 9px;
     border-radius: 999px;
-    background: #EEE7DD;
+    background: var(--border);
     margin: 10px 0 6px;
     overflow: hidden;
   }
@@ -956,7 +1012,7 @@
   .tag-med { background: var(--accent-violet-light); color: var(--accent-violet); }
   .tag-symptom { background: var(--accent-rose-light); color: var(--accent-rose); }
   .tag-note { background: var(--accent-slate-light); color: var(--accent-slate); }
-  .tag-sleep { background: #F0F4FF; color: #4A60A0; }
+  .tag-sleep { background: var(--accent-slate-light); color: var(--accent-slate); }
 
   .entry-actions {
     position: absolute;
@@ -1060,9 +1116,9 @@
     right: 0;
     bottom: 0;
     z-index: 190;
-    background: rgba(255,254,249,0.96);
+    background: var(--warm-white);
     border-top: 1px solid var(--border);
-    box-shadow: 0 -4px 16px rgba(28,26,23,0.06);
+    box-shadow: var(--shadow-md);
     padding: 10px 12px max(10px, env(safe-area-inset-bottom));
   }
 
@@ -1226,6 +1282,12 @@
   .urgency-btn.sel-4 { border-color: #B85C5C; background: #F9EDED; color: #B85C5C; }
   .urgency-btn.sel-5 { border-color: #8B2252; background: #F9E8F0; color: #8B2252; }
 
+  :root[data-theme="night"] .urgency-btn.sel-1 { border-color: var(--accent-teal); background: var(--accent-teal-light); color: var(--accent-teal); }
+  :root[data-theme="night"] .urgency-btn.sel-2 { border-color: #93B869; background: #243420; color: #CDE995; }
+  :root[data-theme="night"] .urgency-btn.sel-3 { border-color: var(--accent-amber); background: var(--accent-amber-light); color: var(--accent-amber); }
+  :root[data-theme="night"] .urgency-btn.sel-4 { border-color: var(--accent-rose); background: var(--accent-rose-light); color: var(--accent-rose); }
+  :root[data-theme="night"] .urgency-btn.sel-5 { border-color: #F1A4C5; background: #442336; color: #F1A4C5; }
+
   .btn-submit {
     width: 100%;
     padding: 14px;
@@ -1267,7 +1329,7 @@
   .icon-med { background: var(--accent-violet-light); }
   .icon-symptom { background: var(--accent-rose-light); }
   .icon-note { background: var(--accent-slate-light); }
-  .icon-sleep { background: #F0F4FF; }
+  .icon-sleep { background: var(--accent-slate-light); }
 
   .divider { height: 1px; background: var(--border); margin: 4px 0 14px; }
 
@@ -1322,7 +1384,10 @@
 <div class="header">
   <div class="header-top">
     <div class="app-name">Recovery<span>Log</span></div>
-    <div class="day-badge" id="dayBadge">Day 5</div>
+    <div class="header-actions">
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle night mode">Night</button>
+      <div class="day-badge" id="dayBadge">Day 5</div>
+    </div>
   </div>
   <div class="header-meta">
     <div class="header-date" id="headerDate">Sunday, 7 June 2026</div>
@@ -1498,6 +1563,7 @@ const START_DATE_KEY = '2026-06-07';
 const STORAGE_KEY = 'recovery-log-v2';
 const LEGACY_STORAGE_KEY = 'recovery-log-cache';
 const DELETED_STORAGE_KEY = 'recovery-log-deleted-v1';
+const THEME_STORAGE_KEY = 'recovery-log-theme';
 const MED_PRESETS = [
   { name: 'Paracetamol', dose: '500mg' },
   { name: 'Imodium', dose: '1 tablet' },
@@ -1579,6 +1645,29 @@ function escapeHTML(value) {
     '"': '&quot;',
     "'": '&#39;'
   }[ch]));
+}
+
+function currentTheme() {
+  return document.documentElement.dataset.theme === 'night' ? 'night' : 'day';
+}
+
+function applyTheme(theme, persist = true) {
+  const nextTheme = theme === 'night' ? 'night' : 'day';
+  document.documentElement.dataset.theme = nextTheme === 'night' ? 'night' : '';
+  if (persist) {
+    try { localStorage.setItem(THEME_STORAGE_KEY, nextTheme); } catch(e) {}
+  }
+  const toggle = document.getElementById('themeToggle');
+  if (toggle) {
+    toggle.textContent = nextTheme === 'night' ? 'Day' : 'Night';
+    toggle.setAttribute('aria-label', nextTheme === 'night' ? 'Switch to day mode' : 'Switch to night mode');
+  }
+  const meta = document.getElementById('themeColorMeta');
+  if (meta) meta.setAttribute('content', nextTheme === 'night' ? '#101716' : '#FAF7F2');
+}
+
+function toggleTheme() {
+  applyTheme(currentTheme() === 'night' ? 'day' : 'night');
 }
 
 // ─── Storage ─────────────────────────────────────────────────────────────────
@@ -3677,6 +3766,7 @@ document.addEventListener('touchend', e => {
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
+applyTheme(currentTheme(), false);
 load();
 initSupabaseSync();
 </script>
