@@ -1398,20 +1398,20 @@
 
   .bristol-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 7px;
-    padding: 2px 0 4px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 2px 0;
   }
 
   .bristol-card {
-    min-height: 144px;
+    min-height: 116px;
     min-width: 0;
-    border-radius: 14px;
-    text-align: left;
-    padding: 8px;
+    border-radius: 12px;
+    text-align: center;
+    padding: 6px;
     display: grid;
     grid-template-rows: auto 1fr auto;
-    gap: 7px;
+    gap: 5px;
     align-content: stretch;
     border-width: 1px;
     background: var(--warm-white);
@@ -1422,9 +1422,10 @@
   .bristol-card::before {
     content: '';
     position: absolute;
-    inset: 0;
-    opacity: 0.14;
-    background: linear-gradient(160deg, var(--bristol-tint), transparent 58%);
+    inset: 26px 8px 38px;
+    border-radius: 50%;
+    opacity: 0.72;
+    background: var(--bristol-tint);
     pointer-events: none;
   }
 
@@ -1438,51 +1439,70 @@
   .bristol-card.selected::after {
     content: '✓';
     position: absolute;
-    top: 7px;
-    right: 7px;
-    width: 21px;
-    height: 21px;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     display: grid;
     place-items: center;
     background: var(--bristol-color);
-    color: var(--warm-white);
-    font-size: 13px;
+    color: #fffaf0;
+    font-size: 11px;
     font-weight: 800;
   }
 
   .bristol-type-num {
     position: relative;
     z-index: 1;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
+    min-height: 22px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
     background: var(--bristol-color);
-    color: var(--warm-white);
+    color: #fffaf0;
     font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0;
+    box-shadow: 0 2px 6px rgba(84, 55, 43, 0.14);
+  }
+
+  .bristol-card .bristol-type-num {
+    color: #fffaf0;
+  }
+
+  .bristol-type-num small {
+    color: inherit;
+    font-size: 7px;
+    font-weight: 800;
+    line-height: 1;
   }
 
   .bristol-visual {
     position: relative;
     z-index: 1;
     width: 100%;
-    min-height: 58px;
+    height: 44px;
+    min-height: 44px;
     align-self: center;
-    filter: drop-shadow(0 6px 10px rgba(84, 55, 43, 0.12));
+    filter: drop-shadow(0 4px 7px rgba(84, 55, 43, 0.18));
   }
 
   .bristol-shape {
     fill: var(--bristol-color);
   }
 
+  .bristol-highlight {
+    fill: rgba(255, 232, 194, 0.34);
+  }
+
   .bristol-mark {
     fill: none;
-    stroke: color-mix(in srgb, var(--warm-white), var(--bristol-color) 18%);
-    stroke-width: 3.5;
+    stroke: rgba(61, 35, 22, 0.48);
+    stroke-width: 3;
     stroke-linecap: round;
   }
 
@@ -1498,20 +1518,34 @@
     position: relative;
     z-index: 1;
     display: grid;
-    gap: 2px;
+    gap: 1px;
   }
 
   .bristol-card strong {
     color: var(--ink);
     display: block;
-    font-size: 13px;
+    font-size: 11px;
+    line-height: 1.05;
   }
 
   .bristol-card span {
     color: var(--ink-faint);
     display: block;
-    font-size: 11px;
-    line-height: 1.25;
+    font-size: 9.5px;
+    line-height: 1.12;
+  }
+
+  .bristol-card span.bristol-type-num {
+    color: #fffaf0;
+    display: flex;
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .bristol-card span.bristol-type-num small {
+    color: #fffaf0;
+    display: inline;
+    font-size: 7px;
   }
 
   @media (min-width: 760px) {
@@ -1520,11 +1554,12 @@
     }
 
     .bristol-card {
-      min-height: 168px;
+      min-height: 132px;
     }
 
     .bristol-visual {
-      min-height: 72px;
+      height: 56px;
+      min-height: 56px;
     }
   }
 
@@ -1848,13 +1883,13 @@ const MED_PRESETS = [
   { name: 'Electrolytes', dose: '1 sachet' }
 ];
 const BRISTOL_TYPES = [
-  { value: '1', short: 'Hard lumps', label: 'Separate hard lumps', tone: 'hard', color: '#7f5af0', tint: '#f0eaff' },
-  { value: '2', short: 'Lumpy', label: 'Sausage-shaped, lumpy', tone: 'hard', color: '#8b6fcb', tint: '#f0eaff' },
-  { value: '3', short: 'Cracked', label: 'Sausage with cracks', tone: 'ideal', color: '#239b7e', tint: '#e4f7f1' },
-  { value: '4', short: 'Smooth', label: 'Smooth, soft sausage', tone: 'ideal', color: '#1c8f87', tint: '#e4f7f1' },
-  { value: '5', short: 'Soft blobs', label: 'Soft blobs, clear edges', tone: 'loose', color: '#d38a1e', tint: '#fff0cf' },
-  { value: '6', short: 'Mushy', label: 'Fluffy or mushy pieces', tone: 'loose', color: '#c66f17', tint: '#fff0cf' },
-  { value: '7', short: 'Watery', label: 'Watery, no solid pieces', tone: 'watery', color: '#c84a5d', tint: '#ffe4e7' }
+  { value: '1', short: 'Hard lumps', label: 'Separate hard lumps', tone: 'hard', color: '#5c3326', tint: '#f3dfc1' },
+  { value: '2', short: 'Lumpy', label: 'Sausage-shaped, lumpy', tone: 'hard', color: '#704127', tint: '#f3dfc1' },
+  { value: '3', short: 'Cracked', label: 'Sausage with cracks', tone: 'ideal', color: '#8c5a36', tint: '#f6e6c9' },
+  { value: '4', short: 'Smooth', label: 'Smooth, soft sausage', tone: 'ideal', color: '#9d6a3d', tint: '#f6e6c9' },
+  { value: '5', short: 'Soft blobs', label: 'Soft blobs, clear edges', tone: 'loose', color: '#b6763c', tint: '#f8e8cc' },
+  { value: '6', short: 'Mushy', label: 'Fluffy or mushy pieces', tone: 'loose', color: '#bb7d42', tint: '#f8e8cc' },
+  { value: '7', short: 'Watery', label: 'Watery, no solid pieces', tone: 'watery', color: '#c88a4d', tint: '#faebd4' }
 ];
 
 let allDays = {}; // { 'YYYY-MM-DD': [entries] }
@@ -2577,46 +2612,51 @@ function bristolVisual(value) {
   const type = String(value || '');
   if (type === '1') return `
     <svg class="bristol-visual" viewBox="0 0 120 78" aria-hidden="true">
-      <circle class="bristol-shape" cx="31" cy="42" r="13"></circle>
-      <circle class="bristol-shape" cx="55" cy="30" r="11"></circle>
-      <circle class="bristol-shape" cx="78" cy="47" r="14"></circle>
-      <circle class="bristol-shape" cx="95" cy="28" r="9"></circle>
-      <circle class="bristol-shape" cx="43" cy="59" r="8"></circle>
+      <ellipse class="bristol-shape" cx="27" cy="43" rx="12" ry="10" transform="rotate(-14 27 43)"></ellipse>
+      <ellipse class="bristol-shape" cx="49" cy="30" rx="10" ry="9" transform="rotate(13 49 30)"></ellipse>
+      <ellipse class="bristol-shape" cx="70" cy="47" rx="13" ry="11" transform="rotate(-10 70 47)"></ellipse>
+      <ellipse class="bristol-shape" cx="93" cy="31" rx="10" ry="8" transform="rotate(11 93 31)"></ellipse>
+      <ellipse class="bristol-shape" cx="44" cy="57" rx="9" ry="7" transform="rotate(-18 44 57)"></ellipse>
+      <ellipse class="bristol-highlight" cx="25" cy="39" rx="4" ry="2"></ellipse>
+      <ellipse class="bristol-highlight" cx="68" cy="43" rx="4" ry="2"></ellipse>
     </svg>`;
   if (type === '2') return `
     <svg class="bristol-visual" viewBox="0 0 120 78" aria-hidden="true">
-      <ellipse class="bristol-shape" cx="43" cy="42" rx="23" ry="17" transform="rotate(-10 43 42)"></ellipse>
-      <ellipse class="bristol-shape" cx="65" cy="37" rx="25" ry="18" transform="rotate(8 65 37)"></ellipse>
-      <ellipse class="bristol-shape" cx="84" cy="44" rx="20" ry="16" transform="rotate(-8 84 44)"></ellipse>
-      <path class="bristol-mark" d="M47 32c5 5 5 12 0 18M69 25c5 8 4 18-2 24M86 34c3 5 3 10-1 15"></path>
+      <path class="bristol-shape" d="M20 44c4-17 18-24 33-19 8-8 22-7 30 2 13-1 22 7 22 18 0 12-10 20-25 19-17 4-33 3-48-2-9-3-14-10-12-18Z"></path>
+      <circle class="bristol-highlight" cx="40" cy="38" r="7"></circle>
+      <circle class="bristol-highlight" cx="61" cy="34" r="6"></circle>
+      <circle class="bristol-highlight" cx="80" cy="42" r="7"></circle>
+      <path class="bristol-mark" d="M34 53c12 4 24 3 35-2M51 29c4 6 4 13-1 20M75 30c6 6 7 15 2 23"></path>
     </svg>`;
   if (type === '3') return `
     <svg class="bristol-visual" viewBox="0 0 120 78" aria-hidden="true">
-      <rect class="bristol-shape" x="19" y="26" width="82" height="28" rx="15" transform="rotate(-4 60 40)"></rect>
-      <path class="bristol-mark" d="M35 31l-5 11 8 8M56 27l-7 12 9 9M75 29l-5 10 8 10M93 33l-6 8 4 8"></path>
+      <path class="bristol-shape" d="M18 41c4-16 22-21 46-18 26 3 41 10 40 23-2 14-20 18-46 15-27-3-43-8-40-20Z"></path>
+      <path class="bristol-highlight" d="M36 36c15-5 35-5 52 1" opacity="0.55"></path>
+      <path class="bristol-mark" d="M34 34l-4 8 7 6M53 29l-5 10 8 8M72 33l-4 8 7 8M90 37l-5 6 4 6"></path>
     </svg>`;
   if (type === '4') return `
     <svg class="bristol-visual" viewBox="0 0 120 78" aria-hidden="true">
-      <path class="bristol-shape" d="M24 43c10-23 42-31 63-20 18 9 19 30 4 37-19 9-57-2-67-17Z"></path>
-      <path class="bristol-mark" d="M38 41c12-10 31-14 48-5"></path>
+      <path class="bristol-shape" d="M15 50c12-18 36-30 65-27 17 2 28 9 27 17-2 10-19 13-42 12-24-1-38 5-50-2Z"></path>
+      <path class="bristol-highlight" d="M32 44c16-12 40-15 61-7" opacity="0.55"></path>
     </svg>`;
   if (type === '5') return `
     <svg class="bristol-visual" viewBox="0 0 120 78" aria-hidden="true">
-      <path class="bristol-shape" d="M25 46c-2-13 12-24 25-17 11 6 10 22-2 29-11 7-21 1-23-12Z"></path>
-      <path class="bristol-shape" d="M58 35c6-13 27-10 31 4 5 16-12 26-24 17-7-5-10-13-7-21Z"></path>
-      <path class="bristol-shape" d="M76 57c1-10 15-15 23-8 9 8 2 22-10 21-8-1-14-6-13-13Z"></path>
+      <ellipse class="bristol-shape" cx="31" cy="47" rx="15" ry="10" transform="rotate(-19 31 47)"></ellipse>
+      <ellipse class="bristol-shape" cx="58" cy="39" rx="16" ry="10" transform="rotate(7 58 39)"></ellipse>
+      <ellipse class="bristol-shape" cx="86" cy="51" rx="17" ry="11" transform="rotate(-8 86 51)"></ellipse>
+      <ellipse class="bristol-highlight" cx="56" cy="36" rx="6" ry="2"></ellipse>
     </svg>`;
   if (type === '6') return `
     <svg class="bristol-visual" viewBox="0 0 120 78" aria-hidden="true">
-      <path class="bristol-shape" d="M23 48c-7-15 10-31 25-22 8-14 29-8 31 7 16-1 25 16 15 29-8 10-24 10-32 1-12 8-30 4-39-15Z"></path>
-      <circle class="bristol-shape" cx="92" cy="25" r="8"></circle>
-      <circle class="bristol-shape" cx="31" cy="25" r="6"></circle>
-      <path class="bristol-mark" d="M37 43c8 3 18 3 27-3M55 56c9 2 18 0 25-6"></path>
+      <path class="bristol-shape" d="M18 49c-4-14 11-25 24-17 6-9 21-8 27 1 13-6 29 5 27 19-2 16-23 22-36 11-14 9-36 3-42-14Z"></path>
+      <path class="bristol-shape" d="M80 27c4-10 20-9 23 2 3 10-8 18-17 12-5-3-8-8-6-14Z"></path>
+      <path class="bristol-mark" d="M35 45c9 5 20 5 30 0M52 58c10 3 21 1 30-6"></path>
     </svg>`;
   return `
     <svg class="bristol-visual" viewBox="0 0 120 78" aria-hidden="true">
-      <path class="bristol-shape" d="M25 50c11-16 58-18 75-2 9 9-5 22-33 22-31 0-51-8-42-20Z" opacity="0.65"></path>
-      <path class="bristol-water" d="M21 31c11-9 24-9 35 0M62 31c12-9 25-9 37 0M35 48c17-8 36-8 53 0"></path>
+      <path class="bristol-shape" d="M20 51c9-16 61-18 78-3 10 8-5 21-34 21-31 0-53-8-44-18Z" opacity="0.58"></path>
+      <path class="bristol-highlight" d="M35 51c18-6 39-6 58 0" opacity="0.45"></path>
+      <path class="bristol-water" d="M20 31c12-9 25-9 37 0M63 31c12-9 25-9 37 0M35 46c17-8 36-8 53 0"></path>
     </svg>`;
 }
 
@@ -3153,7 +3193,7 @@ function buildForm(type, timeStr) {
       <div class="bristol-grid">
         ${BRISTOL_TYPES.map(item => `
           <button class="chip bristol-card" data-group="bristol" data-value="${escapeHTML(item.value)}" style="--bristol-color:${escapeHTML(item.color)};--bristol-tint:${escapeHTML(item.tint)}" aria-label="Bristol type ${escapeHTML(item.value)} ${escapeHTML(item.label)}">
-            <span class="bristol-type-num">${escapeHTML(item.value)}</span>
+            <span class="bristol-type-num"><small>TYPE</small>${escapeHTML(item.value)}</span>
             ${bristolVisual(item.value)}
             <span class="bristol-text">
               <strong>${escapeHTML(item.short)}</strong>
