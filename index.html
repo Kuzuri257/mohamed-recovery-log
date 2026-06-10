@@ -337,7 +337,6 @@
   .day-signal.amber { background: var(--accent-amber); }
   .day-signal.rose { background: var(--accent-rose); }
   .day-tile.active .day-signal { background: rgba(255,255,255,0.82); }
-  }
 
   /* Summary strip */
   .summary-strip {
@@ -392,6 +391,90 @@
     font-weight: 500;
     color: var(--ink);
     font-size: 13px;
+  }
+
+  .stool-panel {
+    margin: 0 20px 10px;
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 12px;
+  }
+
+  .stool-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .stool-panel-title {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .stool-panel-note {
+    color: var(--ink-faint);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .stool-chart {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    align-items: end;
+  }
+
+  .stool-day {
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+    justify-items: center;
+  }
+
+  .stool-bars {
+    height: 74px;
+    width: 100%;
+    border-radius: var(--radius-sm);
+    background: var(--cream);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    gap: 2px;
+    padding: 5px 3px;
+  }
+
+  .stool-bar {
+    width: 8px;
+    min-height: 7px;
+    border-radius: 99px 99px 3px 3px;
+    background: var(--accent-slate);
+  }
+
+  .stool-bar.hard { background: var(--accent-violet); }
+  .stool-bar.ideal { background: var(--accent-teal); }
+  .stool-bar.loose { background: var(--accent-amber); }
+  .stool-bar.watery { background: var(--accent-rose); }
+  .stool-bar.unknown { background: var(--border-strong); }
+
+  .stool-day-label {
+    color: var(--ink-faint);
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .stool-empty {
+    color: var(--ink-faint);
+    font-size: 11px;
+    line-height: 1.35;
+    text-align: center;
+    padding: 4px 0;
   }
 
   /* Timeline */
@@ -1251,6 +1334,12 @@
     margin-bottom: 16px;
   }
 
+  .confirm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
   .form-label {
     display: block;
     font-size: 12px;
@@ -1305,6 +1394,35 @@
     background: var(--accent-teal-light);
     color: var(--accent-teal);
     font-weight: 600;
+  }
+
+  .bristol-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .bristol-card {
+    min-height: 76px;
+    border-radius: var(--radius-sm);
+    text-align: left;
+    padding: 9px;
+    display: grid;
+    gap: 4px;
+    align-content: start;
+  }
+
+  .bristol-card strong {
+    color: var(--ink);
+    display: block;
+    font-size: 13px;
+  }
+
+  .bristol-card span {
+    color: var(--ink-faint);
+    display: block;
+    font-size: 11px;
+    line-height: 1.25;
   }
 
   .urgency-row {
@@ -1477,6 +1595,14 @@
   <div class="stat-pill">💊 <span class="stat-num" id="statMeds">0</span> meds</div>
 </div>
 
+<div class="stool-panel" id="stoolPanel">
+  <div class="stool-panel-head">
+    <div class="stool-panel-title">Stool trend</div>
+    <div class="stool-panel-note">Bristol 1-7 · 7 days</div>
+  </div>
+  <div class="stool-chart" id="stoolChart"></div>
+</div>
+
 <div class="app-tabs">
   <button class="tab-btn active" id="logTabBtn" onclick="switchMainTab('log')">Log</button>
   <button class="tab-btn" id="foodMapTabBtn" onclick="switchMainTab('foodmap')">Food Map</button>
@@ -1617,6 +1743,15 @@ const MED_PRESETS = [
   { name: 'Paracetamol', dose: '500mg' },
   { name: 'Imodium', dose: '1 tablet' },
   { name: 'Electrolytes', dose: '1 sachet' }
+];
+const BRISTOL_TYPES = [
+  { value: '1', short: 'Hard lumps', label: 'Separate hard lumps', tone: 'hard' },
+  { value: '2', short: 'Lumpy', label: 'Sausage-shaped, lumpy', tone: 'hard' },
+  { value: '3', short: 'Cracked', label: 'Sausage with cracks', tone: 'ideal' },
+  { value: '4', short: 'Smooth', label: 'Smooth, soft sausage', tone: 'ideal' },
+  { value: '5', short: 'Soft blobs', label: 'Soft blobs, clear edges', tone: 'loose' },
+  { value: '6', short: 'Mushy', label: 'Fluffy or mushy pieces', tone: 'loose' },
+  { value: '7', short: 'Watery', label: 'Watery, no solid pieces', tone: 'watery' }
 ];
 
 let allDays = {}; // { 'YYYY-MM-DD': [entries] }
@@ -2163,6 +2298,7 @@ function renderAll() {
   renderDayNav();
   renderTimeline();
   renderStats();
+  renderStoolChart();
   renderFoodMap();
   document.getElementById('headerDate').textContent = formatFullDate(currentDay);
   document.getElementById('dayBadge').textContent = 'Day ' + dayNumber(currentDay);
@@ -2184,8 +2320,9 @@ function daySignalClasses(dateKey) {
     const d = entry.data || {};
     if (entry.type === 'poop') {
       const urgency = parseNumber(d.urgency);
-      if (/loose|watery/i.test(d.consistency || '') || urgency >= 4) watch = true;
-      if ((d.blood && d.blood !== 'No') || urgency >= 5) alert = true;
+      const bristol = parseNumber(d.bristol);
+      if (/loose|watery/i.test(d.consistency || '') || urgency >= 4 || (d.bristol && (bristol <= 2 || bristol >= 5))) watch = true;
+      if ((d.blood && d.blood !== 'No') || urgency >= 5 || (d.bristol && bristol >= 6)) alert = true;
     }
     if (entry.type === 'symptom') {
       const severity = parseNumber(d.severity);
@@ -2254,6 +2391,10 @@ function buildEntryHTML(e, i) {
 
   if (e.type === 'poop') {
     title = e.data.consistency || 'Bowel movement';
+    if (e.data.bristol) {
+      const bristol = bristolType(e.data.bristol);
+      tags.push({ cls: bristol?.tone === 'ideal' ? 'tag-food' : bristol?.tone === 'watery' ? 'tag-symptom' : 'tag-poop', txt: `Bristol ${e.data.bristol}${bristol ? ` · ${bristol.short}` : ''}` });
+    }
     if (e.data.urgency) tags.push({ cls: 'tag-poop', txt: `Urgency ${e.data.urgency}/5` });
     if (e.data.gas) tags.push({ cls: 'tag-poop', txt: `Gas: ${e.data.gas}` });
     if (Array.isArray(e.data.recent_food_ids) && e.data.recent_food_ids.length) tags.push({ cls: 'tag-food', txt: `${e.data.recent_food_ids.length} food link(s)` });
@@ -2319,6 +2460,43 @@ function renderStats() {
   document.getElementById('statFood').textContent = food;
   document.getElementById('statFluids').textContent = fluids || '—';
   document.getElementById('statMeds').textContent = meds;
+}
+
+function bristolType(value) {
+  return BRISTOL_TYPES.find(type => type.value === String(value || ''));
+}
+
+function bristolTone(value) {
+  return bristolType(value)?.tone || 'unknown';
+}
+
+function renderStoolChart() {
+  const chart = document.getElementById('stoolChart');
+  if (!chart) return;
+  const keys = Array.from({ length: 7 }, (_, idx) => addDaysToKey(currentDay, idx - 6));
+  const hasAny = keys.some(key => (allDays[key] || []).some(entry => entry.type === 'poop'));
+  if (!hasAny) {
+    chart.innerHTML = `<div class="stool-empty" style="grid-column:1/-1">Add bowel movements with a Bristol type to see the 7-day stool trend.</div>`;
+    return;
+  }
+  chart.innerHTML = keys.map(key => {
+    const bms = (allDays[key] || [])
+      .filter(entry => entry.type === 'poop')
+      .slice()
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const bars = bms.length ? bms.map(entry => {
+      const value = Number(entry.data?.bristol || 0);
+      const height = value ? Math.max(12, Math.round((value / 7) * 66)) : 10;
+      const title = bristolType(value)?.label || entry.data?.consistency || 'Bowel movement';
+      return `<span class="stool-bar ${escapeHTML(bristolTone(value))}" style="height:${height}px" title="${escapeHTML(title)}"></span>`;
+    }).join('') : '';
+    return `
+      <div class="stool-day">
+        <div class="stool-bars">${bars || '<span class="stool-empty">—</span>'}</div>
+        <div class="stool-day-label">${escapeHTML(formatBahrainDate(key, { weekday: 'short' }).slice(0, 3))}</div>
+      </div>
+    `;
+  }).join('');
 }
 
 function normalizeFoodName(value) {
@@ -2700,7 +2878,7 @@ function setFieldValue(id, value) {
 function selectChip(group, value) {
   if (!value) return;
   const chips = Array.from(document.querySelectorAll(`.chip[data-group="${group}"]`));
-  const match = chips.find(chip => chip.textContent === value);
+  const match = chips.find(chip => (chip.dataset.value || chip.textContent) === String(value));
   if (match) match.classList.add('selected');
 }
 
@@ -2769,6 +2947,7 @@ function fillForm(type, entry) {
   const d = entry.data || {};
   setFieldValue('f_time', entry.time);
   if (type === 'poop') {
+    selectChip('bristol', d.bristol);
     selectChip('consistency', d.consistency);
     selectUrgency(d.urgency);
     selectChip('gas', d.gas);
@@ -2776,6 +2955,7 @@ function fillForm(type, entry) {
     selectChipsByValue('recent_food_ids', d.recent_food_ids);
     setFieldValue('f_notes', d.notes);
   } else if (type === 'food') {
+    setFieldValue('f_date', entry.dateKey || currentDay);
     setFieldValue('f_item', d.item);
     setFieldValue('f_amount', d.amount);
     setFieldValue('f_ingredients', d.ingredients);
@@ -2819,6 +2999,17 @@ function buildForm(type, timeStr) {
       <input class="form-input" type="time" id="f_time" value="${timeStr}">
     </div>
     <div class="form-group">
+      <label class="form-label">Bristol stool type</label>
+      <div class="bristol-grid">
+        ${BRISTOL_TYPES.map(item => `
+          <button class="chip bristol-card" data-group="bristol" data-value="${escapeHTML(item.value)}">
+            <strong>Type ${escapeHTML(item.value)} · ${escapeHTML(item.short)}</strong>
+            <span>${escapeHTML(item.label)}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="form-group">
       <label class="form-label">Consistency</label>
       <div class="chip-group">
         ${['Watery','Very loose','Loose','Semi-formed','Formed'].map(c=>`<button class="chip" data-group="consistency">${c}</button>`).join('')}
@@ -2852,9 +3043,15 @@ function buildForm(type, timeStr) {
   `;
 
   if (type === 'food') return `
-    <div class="form-group">
-      <label class="form-label">Time</label>
-      <input class="form-input" type="time" id="f_time" value="${timeStr}">
+    <div class="confirm-grid">
+      <div class="form-group">
+        <label class="form-label">Confirm date</label>
+        <input class="form-input" type="date" id="f_date" value="${currentDay}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm time</label>
+        <input class="form-input" type="time" id="f_time" value="${timeStr}">
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">What did you have?</label>
@@ -3022,7 +3219,7 @@ function closeOnOverlay(e) {
 
 function getSelected(group) {
   const el = document.querySelector(`.chip[data-group="${group}"].selected`);
-  return el ? el.textContent : '';
+  return el ? (el.dataset.value || el.textContent) : '';
 }
 
 function getSelectedValues(group) {
@@ -3040,10 +3237,14 @@ function submitEntry(type) {
   const id = editingEntryId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const timeEl = document.getElementById('f_time');
   const time = timeEl ? timeEl.value : currentBahrainTime();
+  const targetDate = type === 'food'
+    ? ((document.getElementById('f_date') || {}).value || currentDay)
+    : currentDay;
   let data = {};
 
   if (type === 'poop') {
     data = {
+      bristol: getSelected('bristol'),
       consistency: getSelected('consistency'),
       urgency: getUrgency(),
       gas: getSelected('gas'),
@@ -3091,13 +3292,21 @@ function submitEntry(type) {
     data = { text: (document.getElementById('f_text')||{}).value || '' };
   }
 
-  if (!allDays[currentDay]) allDays[currentDay] = [];
+  if (!allDays[targetDate]) allDays[targetDate] = [];
   const entry = { id, type, time, data };
-  const existingIdx = allDays[currentDay].findIndex(existing => existing.id === id);
-  if (existingIdx >= 0) allDays[currentDay][existingIdx] = entry;
-  else allDays[currentDay].push(entry);
+  if (editingEntryId) {
+    Object.keys(allDays).forEach(dateKey => {
+      if (dateKey !== targetDate && Array.isArray(allDays[dateKey])) {
+        allDays[dateKey] = allDays[dateKey].filter(existing => existing.id !== id);
+      }
+    });
+  }
+  const existingIdx = allDays[targetDate].findIndex(existing => existing.id === id);
+  if (existingIdx >= 0) allDays[targetDate][existingIdx] = entry;
+  else allDays[targetDate].push(entry);
+  currentDay = targetDate;
   save();
-  pushEntryToCloud(currentDay, entry);
+  pushEntryToCloud(targetDate, entry);
   closeModal();
   renderAll();
 }
@@ -3205,6 +3414,7 @@ function entryReportTitle(entry) {
 function entryReportDetails(entry) {
   const d = entry.data || {};
   if (entry.type === 'poop') return [
+    d.bristol ? `Bristol ${d.bristol}${bristolType(d.bristol) ? ` (${bristolType(d.bristol).short})` : ''}` : '',
     d.urgency ? `urgency ${d.urgency}/5` : '',
     d.gas ? `gas ${d.gas}` : '',
     d.blood ? `blood ${d.blood}` : '',
@@ -3800,16 +4010,6 @@ function checkNewDay() {
     // Keep viewing current unless it's first load
   }
 }
-
-// ─── Swipe gesture support ───────────────────────────────────────────────────
-let touchStartX = 0;
-document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
-document.addEventListener('touchend', e => {
-  // Don't swipe if modal is open
-  if (!document.getElementById('modalOverlay').classList.contains('hidden')) return;
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  if (Math.abs(dx) > 60) goDay(dx < 0 ? 1 : -1);
-}, { passive: true });
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {

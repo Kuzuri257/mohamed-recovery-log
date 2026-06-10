@@ -54,6 +54,8 @@ function entryDetails(entry: RecoveryEntry) {
   if (entry.type === "poop") {
     const linkedFoods = Array.isArray(d.recent_food_ids) ? d.recent_food_ids.length : 0;
     return [
+      text(d.bristol) ? `Bristol stool type ${text(d.bristol)}/7` : "",
+      text(d.consistency) ? `consistency ${text(d.consistency)}` : "",
       text(d.urgency) ? `urgency ${text(d.urgency)}/5` : "",
       text(d.gas) ? `gas ${text(d.gas)}` : "",
       text(d.blood) ? `blood ${text(d.blood)}` : "",
