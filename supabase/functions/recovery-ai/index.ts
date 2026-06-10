@@ -65,6 +65,7 @@ function entryDetails(entry: RecoveryEntry) {
   }
   if (entry.type === "food") {
     return [
+      text(d.food_preset_mode) ? `food family mode ${text(d.food_preset_mode)}` : "",
       text(d.food_alias) ? `entered as ${text(d.food_alias)}` : "",
       text(d.ftype),
       text(d.amount),

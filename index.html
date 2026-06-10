@@ -973,6 +973,24 @@
     display: none;
   }
 
+  .food-preset-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--warm-white);
+    padding: 9px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .food-preset-card.best {
+    border-color: var(--accent-teal);
+  }
+
+  .food-preset-card.custom {
+    border-color: var(--accent-violet);
+    background: var(--accent-violet-light);
+  }
+
   .food-preset-top {
     display: flex;
     align-items: flex-start;
@@ -1037,6 +1055,12 @@
   .food-preset-action.primary {
     background: var(--accent-teal);
     border-color: var(--accent-teal);
+    color: white;
+  }
+
+  .food-preset-action.violet {
+    background: var(--accent-violet);
+    border-color: var(--accent-violet);
     color: white;
   }
 
@@ -2811,55 +2835,164 @@ function displayFoodName(value) {
   return text ? text.replace(/\s+/g, ' ') : 'Unnamed food';
 }
 
+function foodSlug(value) {
+  return normalizeFoodName(value).replace(/\s+/g, '-') || `food-${Date.now()}`;
+}
+
+function titleCaseFood(value) {
+  return normalizeFoodName(value)
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.length <= 2 ? word : word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ') || displayFoodName(value);
+}
+
 function foodPresetByName(name) {
-  return FOOD_PRESETS.find(preset => preset.name === name || preset.key === name);
+  return foodPresetCatalog().find(preset => preset.name === name || preset.key === name);
+}
+
+function learnedFoodPresets() {
+  const presets = new Map();
+  allEntriesWithDates().filter(entry => entry.type === 'food').forEach(entry => {
+    const d = entry.data || {};
+    if (d.food_preset_mode === 'separate') return;
+    const name = displayFoodName(d.canonical_food || d.item);
+    if (!normalizeFoodName(name)) return;
+    const key = d.food_preset_key || foodSlug(name);
+    if (!presets.has(key)) {
+      presets.set(key, {
+        key,
+        name,
+        icon: '🍽️',
+        aliases: [name],
+        required: compactFoodWords(name),
+        learned: true
+      });
+    }
+    const preset = presets.get(key);
+    [d.item, d.item_raw, d.food_alias, d.ingredients].filter(Boolean).forEach(value => {
+      const alias = displayFoodName(value);
+      if (normalizeFoodName(alias) && !preset.aliases.some(existing => normalizeFoodName(existing) === normalizeFoodName(alias))) {
+        preset.aliases.push(alias);
+      }
+    });
+  });
+  return Array.from(presets.values());
+}
+
+function foodPresetCatalog() {
+  const merged = new Map();
+  FOOD_PRESETS.forEach(preset => merged.set(preset.key, { ...preset, aliases: [...preset.aliases], required: [...(preset.required || [])] }));
+  learnedFoodPresets().forEach(preset => {
+    if (!merged.has(preset.key)) {
+      merged.set(preset.key, preset);
+      return;
+    }
+    const existing = merged.get(preset.key);
+    preset.aliases.forEach(alias => {
+      if (!existing.aliases.some(value => normalizeFoodName(value) === normalizeFoodName(alias))) existing.aliases.push(alias);
+    });
+  });
+  return Array.from(merged.values());
 }
 
 function compactFoodWords(value) {
   return normalizeFoodName(value)
     .split(' ')
-    .filter(word => word && !['soup', 'cream', 'plain', 'clear', 'soft', 'fresh', 'boiled', 'cooked'].includes(word));
+    .filter(word => word && !['the','with','and','small','large','cup','bowl','plate','glass','soup','cream','plain','clear','soft','fresh','boiled','cooked','grilled','baked','hot','cold'].includes(word));
 }
 
-function matchFoodPreset(value) {
+function editDistance(a, b) {
+  const left = String(a || '');
+  const right = String(b || '');
+  if (!left) return right.length;
+  if (!right) return left.length;
+  const prev = Array.from({ length: right.length + 1 }, (_, i) => i);
+  const curr = Array(right.length + 1).fill(0);
+  for (let i = 1; i <= left.length; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= right.length; j++) {
+      curr[j] = left[i - 1] === right[j - 1]
+        ? prev[j - 1]
+        : Math.min(prev[j - 1], prev[j], curr[j - 1]) + 1;
+    }
+    for (let j = 0; j <= right.length; j++) prev[j] = curr[j];
+  }
+  return prev[right.length];
+}
+
+function wordSimilarity(a, b) {
+  const left = String(a || '');
+  const right = String(b || '');
+  if (!left || !right) return 0;
+  if (left === right) return 1;
+  const distance = editDistance(left, right);
+  return Math.max(0, 1 - distance / Math.max(left.length, right.length));
+}
+
+function bestWordSimilarity(word, options) {
+  return Math.max(0, ...options.map(option => wordSimilarity(word, option)));
+}
+
+function matchFoodPresets(value, limit = 4) {
   const normalized = normalizeFoodName(value);
-  if (!normalized) return null;
+  if (!normalized) return [];
   const words = normalized.split(' ').filter(Boolean);
-  const candidates = FOOD_PRESETS.map(preset => {
+  const candidates = foodPresetCatalog().map(preset => {
     let score = 0;
-    preset.aliases.forEach(alias => {
+    const aliasWords = new Set();
+    const searchableAliases = [preset.name, ...(preset.aliases || [])];
+    searchableAliases.forEach(alias => {
       const normalizedAlias = normalizeFoodName(alias);
+      normalizedAlias.split(' ').filter(Boolean).forEach(word => aliasWords.add(word));
       if (normalized === normalizedAlias) score += 100;
-      else if (normalized.includes(normalizedAlias)) score += 72 + Math.min(18, normalizedAlias.length);
+      else if (normalized.includes(normalizedAlias) || normalizedAlias.includes(normalized)) score += 62 + Math.min(18, normalizedAlias.length);
     });
     const required = preset.required || [];
-    const matchedRequired = required.filter(word => words.includes(word)).length;
+    const matchedRequired = required.filter(word => words.includes(word) || bestWordSimilarity(word, words) >= 0.78).length;
     if (required.length && matchedRequired === required.length) score += 42 + matchedRequired * 8;
     else score += matchedRequired * 8;
     const presetWords = compactFoodWords(preset.name);
-    const matchedPresetWords = presetWords.filter(word => words.includes(word)).length;
-    score += matchedPresetWords * 12;
-    if (preset.key === 'chicken-soup' && words.includes('broth')) score -= 45;
+    const matchedPresetWords = presetWords.filter(word => words.includes(word) || bestWordSimilarity(word, words) >= 0.78).length;
+    score += matchedPresetWords * 14;
+    words.forEach(word => {
+      const best = bestWordSimilarity(word, Array.from(aliasWords));
+      if (best >= 0.9) score += 14;
+      else if (best >= 0.78) score += 9;
+      else if (best >= 0.68 && word.length >= 5) score += 4;
+    });
+    const hasBrothLikeWord = words.some(word => wordSimilarity(word, 'broth') >= 0.76);
+    if (preset.key === 'chicken-soup' && hasBrothLikeWord) score -= 58;
+    if (preset.key === 'chicken-broth' && hasBrothLikeWord) score += 18;
     if (preset.key === 'low-fat-milk' && (words.includes('cream') || words.includes('yogurt'))) score -= 35;
     return { preset, score };
-  }).sort((a, b) => b.score - a.score);
-  const best = candidates[0];
-  if (!best || best.score < 42) return null;
-  return {
-    ...best.preset,
-    confidence: Math.max(62, Math.min(96, Math.round(best.score)))
-  };
+  })
+    .filter(candidate => candidate.score >= 34)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+  return candidates.map(candidate => ({
+    ...candidate.preset,
+    confidence: Math.max(55, Math.min(96, Math.round(candidate.score)))
+  }));
+}
+
+function matchFoodPreset(value) {
+  return matchFoodPresets(value, 1)[0] || null;
 }
 
 function foodCanonicalName(entryOrData) {
   const d = entryOrData?.data || entryOrData || {};
   const explicit = displayFoodName(d.canonical_food || d.item);
   if (d.food_preset_mode === 'separate') return explicit;
+  if (d.canonical_food) return d.canonical_food;
   const match = matchFoodPreset(explicit);
-  return d.canonical_food || match?.name || explicit;
+  return match?.name || explicit;
 }
 
 function foodCanonicalKey(entryOrData) {
+  const d = entryOrData?.data || entryOrData || {};
+  if (d.food_preset_mode === 'separate') return normalizeFoodName(d.item || d.item_raw);
+  if (d.food_preset_key) return d.food_preset_key;
   const name = foodCanonicalName(entryOrData);
   const preset = foodPresetByName(name) || matchFoodPreset(name);
   return preset?.key || normalizeFoodName(name);
@@ -3335,6 +3468,8 @@ function fillForm(type, entry) {
     setFieldValue('f_item', d.item_raw || d.food_alias || d.item);
     setFieldValue('f_item_raw', d.item_raw || d.food_alias || d.item);
     setFieldValue('f_canonical_food', d.food_preset_mode === 'separate' ? '' : (d.canonical_food || d.item));
+    setFieldValue('f_food_preset_key', d.food_preset_key || (d.canonical_food ? foodSlug(d.canonical_food) : ''));
+    setFieldValue('f_food_preset_mode', d.food_preset_mode || (d.canonical_food ? 'preset' : ''));
     const canonicalField = document.getElementById('f_canonical_food');
     if (canonicalField && d.food_preset_mode === 'separate') canonicalField.dataset.auto = 'disabled';
     setFieldValue('f_amount', d.amount);
@@ -3442,6 +3577,8 @@ function buildForm(type, timeStr) {
       <input class="form-input" type="text" id="f_item" placeholder="e.g. Chicken broth, low-fat milk, rice..." autocomplete="off">
       <input type="hidden" id="f_item_raw">
       <input type="hidden" id="f_canonical_food">
+      <input type="hidden" id="f_food_preset_key">
+      <input type="hidden" id="f_food_preset_mode">
     </div>
     <div class="food-preset-panel hidden" id="foodPresetPanel"></div>
     <div class="form-group">
@@ -3623,16 +3760,24 @@ function getUrgency() {
 function setupFoodPresetUI() {
   const item = document.getElementById('f_item');
   if (!item) return;
-  item.addEventListener('input', updateFoodPresetSuggestion);
+  item.addEventListener('input', () => {
+    const canonical = document.getElementById('f_canonical_food');
+    if (canonical && canonical.dataset.auto !== 'disabled') canonical.dataset.auto = 'true';
+    updateFoodPresetSuggestion();
+  });
   updateFoodPresetSuggestion();
 }
 
-function chooseFoodPreset(name) {
+function chooseFoodPreset(name, key = '', mode = 'preset') {
   const canonical = document.getElementById('f_canonical_food');
+  const presetKey = document.getElementById('f_food_preset_key');
+  const presetMode = document.getElementById('f_food_preset_mode');
   if (canonical) {
     canonical.value = name || '';
     canonical.dataset.auto = name ? 'false' : 'disabled';
   }
+  if (presetKey) presetKey.value = key || (name ? foodSlug(name) : '');
+  if (presetMode) presetMode.value = name ? mode : 'separate';
   updateFoodPresetSuggestion();
 }
 
@@ -3641,54 +3786,118 @@ function updateFoodPresetSuggestion() {
   const panel = document.getElementById('foodPresetPanel');
   const rawField = document.getElementById('f_item_raw');
   const canonicalField = document.getElementById('f_canonical_food');
-  if (!item || !panel || !rawField || !canonicalField) return;
+  const presetKeyField = document.getElementById('f_food_preset_key');
+  const presetModeField = document.getElementById('f_food_preset_mode');
+  if (!item || !panel || !rawField || !canonicalField || !presetKeyField || !presetModeField) return;
   const raw = displayFoodName(item.value);
   rawField.value = item.value || '';
-  const match = matchFoodPreset(item.value);
-  if (!match) {
+  const matches = matchFoodPresets(item.value, 3);
+  const match = matches[0];
+  if (!normalizeFoodName(item.value)) {
     canonicalField.value = '';
+    presetKeyField.value = '';
+    presetModeField.value = '';
     panel.classList.add('hidden');
     panel.innerHTML = '';
     return;
   }
+  const customName = titleCaseFood(item.value);
+  const customKey = foodSlug(customName);
   if (canonicalField.dataset.auto !== 'disabled' && (!canonicalField.value || canonicalField.dataset.auto === 'true')) {
-    canonicalField.value = match.name;
-    canonicalField.dataset.auto = 'true';
+    if (match) {
+      canonicalField.value = match.name;
+      presetKeyField.value = match.key;
+      presetModeField.value = match.learned ? 'learned' : 'preset';
+      canonicalField.dataset.auto = 'true';
+    } else {
+      canonicalField.value = '';
+      presetKeyField.value = '';
+      presetModeField.value = '';
+    }
   }
-  const chosen = canonicalField.value || match.name;
+  const chosen = canonicalField.value || match?.name || '';
   if (canonicalField.dataset.auto === 'disabled') {
     panel.classList.remove('hidden');
     panel.innerHTML = `
+      <div class="food-preset-card">
+        <div class="food-preset-top">
+          <div>
+            <div class="food-preset-title">Save as separate food</div>
+            <div class="food-preset-copy">This will create its own Food Map item and will not teach a reusable preset.</div>
+          </div>
+        </div>
+        <div class="food-preset-actions">
+          ${match ? `<button type="button" class="food-preset-action primary" data-food-action="preset" data-name="${escapeHTML(match.name)}" data-key="${escapeHTML(match.key)}" data-mode="${escapeHTML(match.learned ? 'learned' : 'preset')}">Use ${escapeHTML(match.name)}</button>` : ''}
+          <button type="button" class="food-preset-action violet" data-food-action="custom" data-name="${escapeHTML(customName)}" data-key="${escapeHTML(customKey)}">Create preset</button>
+        </div>
+      </div>
+    `;
+    attachFoodPresetActions(panel);
+    return;
+  }
+  const chosenPreset = foodPresetByName(chosen) || match || { name: chosen, key: foodSlug(chosen), icon: '🍽️', confidence: 100 };
+  const aliasText = normalizeFoodName(raw) !== normalizeFoodName(chosen) ? raw : '';
+  panel.classList.remove('hidden');
+  const selectedIsCustom = chosen && !matches.some(candidate => candidate.name === chosen);
+  const selectedCard = selectedIsCustom ? `
+    <div class="food-preset-card best custom">
       <div class="food-preset-top">
         <div>
-          <div class="food-preset-title">Save as separate food</div>
-          <div class="food-preset-copy">This will create its own Food Map item instead of grouping under ${escapeHTML(match.name)}.</div>
+          <div class="food-preset-title">${escapeHTML(chosenPreset.icon || '🍽️')} Save under new preset: ${escapeHTML(chosen)}</div>
+          <div class="food-preset-copy">This creates a reusable food family for future similar logs.</div>
+        </div>
+        <div class="food-preset-confidence">new</div>
+      </div>
+      ${aliasText ? `<div class="food-preset-alias"><strong>Entered:</strong> ${escapeHTML(aliasText)}<br><strong>Saved under:</strong> ${escapeHTML(chosen)}</div>` : ''}
+      <div class="food-preset-actions">
+        <button type="button" class="food-preset-action" data-food-action="separate">Save separate once</button>
+      </div>
+    </div>
+  ` : '';
+  const suggestionCards = matches.map((candidate, index) => `
+    <div class="food-preset-card ${index === 0 ? 'best' : ''}">
+      <div class="food-preset-top">
+        <div>
+          <div class="food-preset-title">${escapeHTML(candidate.icon || '🍽️')} ${index === 0 ? 'Best match' : 'Possible match'}: ${escapeHTML(candidate.name)}</div>
+          <div class="food-preset-copy">${candidate.learned ? 'Learned from previous logs.' : 'Matched by name, alias, ingredients, or spelling proximity.'}</div>
+        </div>
+        <div class="food-preset-confidence">${escapeHTML(candidate.confidence)}%</div>
+      </div>
+      ${index === 0 && aliasText ? `<div class="food-preset-alias"><strong>Entered:</strong> ${escapeHTML(aliasText)}<br><strong>Saved under:</strong> ${escapeHTML(candidate.name)}</div>` : ''}
+      <div class="food-preset-actions">
+        <button type="button" class="food-preset-action primary" data-food-action="preset" data-name="${escapeHTML(candidate.name)}" data-key="${escapeHTML(candidate.key)}" data-mode="${escapeHTML(candidate.learned ? 'learned' : 'preset')}">Use ${escapeHTML(candidate.name)}</button>
+        <button type="button" class="food-preset-action" data-food-action="separate">Keep separate</button>
+      </div>
+    </div>
+  `).join('');
+  panel.innerHTML = `
+    ${selectedCard}
+    ${suggestionCards}
+    <div class="food-preset-card custom">
+      <div class="food-preset-top">
+        <div>
+          <div class="food-preset-title">＋ Create new preset: ${escapeHTML(customName)}</div>
+          <div class="food-preset-copy">Use this for any repeated food family that is not in the existing list.</div>
         </div>
       </div>
       <div class="food-preset-actions">
-        <button type="button" class="food-preset-action primary" onclick="chooseFoodPreset('${escapeHTML(match.name)}')">Use ${escapeHTML(match.name)}</button>
-        <button type="button" class="food-preset-action" onclick="chooseFoodPreset('')">Keep separate</button>
+        <button type="button" class="food-preset-action violet" data-food-action="custom" data-name="${escapeHTML(customName)}" data-key="${escapeHTML(customKey)}">Create preset</button>
+        <button type="button" class="food-preset-action" data-food-action="separate">Save separate once</button>
       </div>
-    `;
-    return;
-  }
-  const chosenPreset = foodPresetByName(chosen) || match;
-  const aliasText = normalizeFoodName(raw) !== normalizeFoodName(chosen) ? raw : '';
-  panel.classList.remove('hidden');
-  panel.innerHTML = `
-    <div class="food-preset-top">
-      <div>
-        <div class="food-preset-title">${escapeHTML(chosenPreset.icon || '🍽️')} Save under preset: ${escapeHTML(chosen)}</div>
-        <div class="food-preset-copy">Food Map will group similar wording under this clean food name.</div>
-      </div>
-      <div class="food-preset-confidence">${escapeHTML(match.confidence)}%</div>
-    </div>
-    ${aliasText ? `<div class="food-preset-alias"><strong>Entered:</strong> ${escapeHTML(aliasText)}<br><strong>Variation saved under:</strong> ${escapeHTML(chosen)}</div>` : ''}
-    <div class="food-preset-actions">
-      <button type="button" class="food-preset-action primary" onclick="chooseFoodPreset('${escapeHTML(match.name)}')">Use ${escapeHTML(match.name)}</button>
-      <button type="button" class="food-preset-action" onclick="chooseFoodPreset('')">Keep separate</button>
     </div>
   `;
+  attachFoodPresetActions(panel);
+}
+
+function attachFoodPresetActions(panel) {
+  panel.querySelectorAll('[data-food-action]').forEach(button => {
+    button.addEventListener('click', () => {
+      const action = button.dataset.foodAction;
+      if (action === 'separate') chooseFoodPreset('', '', 'separate');
+      else if (action === 'custom') chooseFoodPreset(button.dataset.name || '', button.dataset.key || '', 'custom');
+      else chooseFoodPreset(button.dataset.name || '', button.dataset.key || '', button.dataset.mode || 'preset');
+    });
+  });
 }
 
 function submitEntry(type) {
@@ -3714,12 +3923,14 @@ function submitEntry(type) {
     const rawItem = (document.getElementById('f_item_raw')||{}).value || (document.getElementById('f_item')||{}).value || '';
     const canonicalField = document.getElementById('f_canonical_food');
     const canonical = (canonicalField||{}).value || '';
-    const presetMode = canonical ? 'preset' : (canonicalField?.dataset.auto === 'disabled' ? 'separate' : '');
+    const presetKey = (document.getElementById('f_food_preset_key')||{}).value || (canonical ? foodSlug(canonical) : '');
+    const presetMode = (document.getElementById('f_food_preset_mode')||{}).value || (canonical ? 'preset' : (canonicalField?.dataset.auto === 'disabled' ? 'separate' : ''));
     const savedName = canonical || rawItem;
     data = {
       item: savedName,
       item_raw: rawItem,
       canonical_food: canonical,
+      food_preset_key: presetKey,
       food_alias: canonical && normalizeFoodName(rawItem) !== normalizeFoodName(canonical) ? rawItem : '',
       food_preset_mode: presetMode,
       amount: (document.getElementById('f_amount')||{}).value || '',
