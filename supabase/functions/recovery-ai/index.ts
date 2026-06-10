@@ -42,7 +42,7 @@ function text(value: unknown) {
 function entryTitle(entry: RecoveryEntry) {
   const d = entry.data || {};
   if (entry.type === "poop") return text(d.consistency) || "Bowel movement";
-  if (entry.type === "food") return text(d.item) || "Food / drink";
+  if (entry.type === "food") return text(d.canonical_food) || text(d.item) || "Food / drink";
   if (entry.type === "med") return [text(d.name), text(d.dose)].filter(Boolean).join(" ") || "Medication";
   if (entry.type === "symptom") return text(d.symptom) || "Symptom";
   if (entry.type === "sleep") return `Sleep ${text(d.total)}`.trim();
@@ -65,6 +65,7 @@ function entryDetails(entry: RecoveryEntry) {
   }
   if (entry.type === "food") {
     return [
+      text(d.food_alias) ? `entered as ${text(d.food_alias)}` : "",
       text(d.ftype),
       text(d.amount),
       text(d.ingredients) ? `ingredients ${text(d.ingredients)}` : "",

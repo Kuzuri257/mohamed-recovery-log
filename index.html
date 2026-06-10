@@ -960,6 +960,101 @@
     margin-top: -4px;
   }
 
+  .food-preset-panel {
+    border: 1px solid var(--accent-teal);
+    border-radius: var(--radius-sm);
+    background: var(--accent-teal-light);
+    padding: 10px;
+    display: grid;
+    gap: 9px;
+  }
+
+  .food-preset-panel.hidden {
+    display: none;
+  }
+
+  .food-preset-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .food-preset-title {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .food-preset-copy {
+    color: var(--ink-light);
+    font-size: 12px;
+    line-height: 1.35;
+    margin-top: 3px;
+  }
+
+  .food-preset-confidence {
+    color: var(--accent-teal);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .food-preset-alias {
+    border: 1px dashed color-mix(in srgb, var(--accent-teal), transparent 42%);
+    border-radius: 10px;
+    background: var(--warm-white);
+    color: var(--ink-light);
+    font-size: 12px;
+    line-height: 1.45;
+    padding: 8px;
+  }
+
+  .food-preset-alias strong {
+    color: var(--ink);
+  }
+
+  .food-preset-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+  }
+
+  .food-preset-action {
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    background: var(--warm-white);
+    color: var(--ink);
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 8px;
+  }
+
+  .food-preset-action.primary {
+    background: var(--accent-teal);
+    border-color: var(--accent-teal);
+    color: white;
+  }
+
+  .food-aliases {
+    border-top: 1px solid var(--border);
+    margin-top: 9px;
+    padding-top: 8px;
+  }
+
+  .food-aliases-label {
+    color: var(--ink-faint);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+  }
+
   .tool-actions {
     display: flex;
     gap: 8px;
@@ -1890,6 +1985,18 @@ const BRISTOL_TYPES = [
   { value: '6', short: 'Mushy', label: 'Fluffy or mushy pieces', tone: 'loose', color: '#bb7d42', tint: '#f8e8cc' },
   { value: '7', short: 'Watery', label: 'Watery, no solid pieces', tone: 'watery', color: '#c88a4d', tint: '#faebd4' }
 ];
+const FOOD_PRESETS = [
+  { key: 'chicken-broth', name: 'Chicken broth', icon: '🥣', aliases: ['chicken broth', 'chicken broth soup', 'clear chicken soup', 'broth soup'], required: ['chicken', 'broth'] },
+  { key: 'chicken-soup', name: 'Chicken soup', icon: '🍲', aliases: ['chicken soup', 'chicken vegetable soup'], required: ['chicken', 'soup'] },
+  { key: 'white-rice', name: 'White rice', icon: '🍚', aliases: ['white rice', 'plain rice', 'rice'], required: ['rice'] },
+  { key: 'banana', name: 'Banana', icon: '🍌', aliases: ['banana', 'ripe banana'], required: ['banana'] },
+  { key: 'toast', name: 'Toast', icon: '🍞', aliases: ['toast', 'white toast', 'bread toast'], required: ['toast'] },
+  { key: 'yogurt', name: 'Yogurt', icon: '🥛', aliases: ['yogurt', 'plain yogurt', 'greek yogurt'], required: ['yogurt'] },
+  { key: 'low-fat-milk', name: 'Low-fat milk', icon: '🥛', aliases: ['low fat milk', 'low-fat milk', 'skim milk'], required: ['milk'] },
+  { key: 'egg', name: 'Egg', icon: '🥚', aliases: ['egg', 'boiled egg', 'scrambled egg'], required: ['egg'] },
+  { key: 'potato', name: 'Potato', icon: '🥔', aliases: ['potato', 'mashed potato', 'boiled potato'], required: ['potato'] },
+  { key: 'oats', name: 'Oats', icon: '🥣', aliases: ['oats', 'oatmeal', 'porridge'], required: ['oats'] }
+];
 
 let allDays = {}; // { 'YYYY-MM-DD': [entries] }
 let deletedEntryIds = [];
@@ -2184,6 +2291,7 @@ async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is r
         end: currentDay,
         foodMap: foodMap.cards.slice(0, 12).map(card => ({
           food: card.name,
+          aliases: card.aliases,
           status: card.label,
           meals: card.meals,
           bm_after: card.bmLinks,
@@ -2537,7 +2645,8 @@ function buildEntryHTML(e, i) {
     if (Array.isArray(e.data.recent_food_ids) && e.data.recent_food_ids.length) tags.push({ cls: 'tag-food', txt: `${e.data.recent_food_ids.length} food link(s)` });
     if (e.data.notes) tags.push({ cls: 'tag-note', txt: e.data.notes });
   } else if (e.type === 'food') {
-    title = e.data.item || 'Food / drink';
+    title = e.data.canonical_food || e.data.item || 'Food / drink';
+    if (e.data.food_alias) tags.push({ cls: 'tag-note', txt: `Entered: ${e.data.food_alias}` });
     if (e.data.amount) tags.push({ cls: 'tag-food', txt: e.data.amount });
     if (e.data.fluid_ml) tags.push({ cls: 'tag-food', txt: `${e.data.fluid_ml} ml` });
     if (e.data.trial_status) tags.push({ cls: e.data.trial_status === 'Testing new' ? 'tag-symptom' : 'tag-food', txt: e.data.trial_status });
@@ -2702,6 +2811,71 @@ function displayFoodName(value) {
   return text ? text.replace(/\s+/g, ' ') : 'Unnamed food';
 }
 
+function foodPresetByName(name) {
+  return FOOD_PRESETS.find(preset => preset.name === name || preset.key === name);
+}
+
+function compactFoodWords(value) {
+  return normalizeFoodName(value)
+    .split(' ')
+    .filter(word => word && !['soup', 'cream', 'plain', 'clear', 'soft', 'fresh', 'boiled', 'cooked'].includes(word));
+}
+
+function matchFoodPreset(value) {
+  const normalized = normalizeFoodName(value);
+  if (!normalized) return null;
+  const words = normalized.split(' ').filter(Boolean);
+  const candidates = FOOD_PRESETS.map(preset => {
+    let score = 0;
+    preset.aliases.forEach(alias => {
+      const normalizedAlias = normalizeFoodName(alias);
+      if (normalized === normalizedAlias) score += 100;
+      else if (normalized.includes(normalizedAlias)) score += 72 + Math.min(18, normalizedAlias.length);
+    });
+    const required = preset.required || [];
+    const matchedRequired = required.filter(word => words.includes(word)).length;
+    if (required.length && matchedRequired === required.length) score += 42 + matchedRequired * 8;
+    else score += matchedRequired * 8;
+    const presetWords = compactFoodWords(preset.name);
+    const matchedPresetWords = presetWords.filter(word => words.includes(word)).length;
+    score += matchedPresetWords * 12;
+    if (preset.key === 'chicken-soup' && words.includes('broth')) score -= 45;
+    if (preset.key === 'low-fat-milk' && (words.includes('cream') || words.includes('yogurt'))) score -= 35;
+    return { preset, score };
+  }).sort((a, b) => b.score - a.score);
+  const best = candidates[0];
+  if (!best || best.score < 42) return null;
+  return {
+    ...best.preset,
+    confidence: Math.max(62, Math.min(96, Math.round(best.score)))
+  };
+}
+
+function foodCanonicalName(entryOrData) {
+  const d = entryOrData?.data || entryOrData || {};
+  const explicit = displayFoodName(d.canonical_food || d.item);
+  if (d.food_preset_mode === 'separate') return explicit;
+  const match = matchFoodPreset(explicit);
+  return d.canonical_food || match?.name || explicit;
+}
+
+function foodCanonicalKey(entryOrData) {
+  const name = foodCanonicalName(entryOrData);
+  const preset = foodPresetByName(name) || matchFoodPreset(name);
+  return preset?.key || normalizeFoodName(name);
+}
+
+function foodRawName(entryOrData) {
+  const d = entryOrData?.data || entryOrData || {};
+  return displayFoodName(d.item_raw || d.food_alias || d.item || d.ingredients || 'Food');
+}
+
+function foodAlias(entryOrData) {
+  const raw = foodRawName(entryOrData);
+  const canonical = foodCanonicalName(entryOrData);
+  return normalizeFoodName(raw) && normalizeFoodName(raw) !== normalizeFoodName(canonical) ? raw : '';
+}
+
 function foodRelationWindowHours(entryType) {
   return entryType === 'poop' ? 12 : 8;
 }
@@ -2747,12 +2921,13 @@ function buildFoodMapModel() {
   const groups = new Map();
 
   foods.forEach(entry => {
-    const rawName = displayFoodName(entry.data?.item || entry.data?.ingredients || 'Food');
-    const key = normalizeFoodName(rawName) || entry.id;
+    const rawName = foodRawName(entry);
+    const canonicalName = foodCanonicalName(entry);
+    const key = foodCanonicalKey(entry) || entry.id;
     if (!groups.has(key)) {
       groups.set(key, {
         key,
-        name: rawName,
+        name: canonicalName,
         firstTs: entryDateTime(entry.dateKey, entry.time),
         lastTs: entryDateTime(entry.dateKey, entry.time),
         meals: 0,
@@ -2768,11 +2943,13 @@ function buildFoodMapModel() {
         symptomLinks: 0,
         strongSymptoms: 0,
         maxSymptom: 0,
-        notes: []
+        notes: [],
+        aliases: new Set()
       });
     }
     const group = groups.get(key);
-    group.name = group.name.length <= rawName.length ? group.name : rawName;
+    group.name = canonicalName;
+    if (foodAlias(entry)) group.aliases.add(foodAlias(entry));
     group.meals += entry.data?.ftype === 'Fluid' ? 0 : 1;
     group.fluids += parseNumber(entry.data?.fluid_ml);
     if (entry.data?.trial_status === 'Testing new') group.trialMeals += 1;
@@ -2786,7 +2963,7 @@ function buildFoodMapModel() {
 
   outcomes.forEach(outcome => {
     linkedFoodsForOutcome(outcome, foodsById, foods).forEach(({ food, confidence }) => {
-      const key = normalizeFoodName(food.data?.item || food.data?.ingredients || 'Food') || food.id;
+      const key = foodCanonicalKey(food) || food.id;
       const group = groups.get(key);
       if (!group) return;
       if (confidence === 'marked') group.markedLinks += 1;
@@ -2835,6 +3012,7 @@ function buildFoodMapModel() {
       ...group,
       ingredients: Array.from(group.ingredients).slice(0, 4),
       notes: group.notes.slice(-2),
+      aliases: Array.from(group.aliases).slice(0, 5),
       outcomeCount,
       exposure,
       reactionScore,
@@ -2910,6 +3088,12 @@ function foodCardHTML(card) {
         ${chips.map(chip => `<span class="tag tag-food">${escapeHTML(chip)}</span>`).join('')}
         ${card.ingredients.map(item => `<span class="tag tag-note">${escapeHTML(item)}</span>`).join('')}
       </div>
+      ${card.aliases.length ? `
+        <div class="food-aliases">
+          <div class="food-aliases-label">Grouped variations</div>
+          <div class="food-card-chips">${card.aliases.map(alias => `<span class="tag tag-note">${escapeHTML(alias)}</span>`).join('')}</div>
+        </div>
+      ` : ''}
       <p class="food-card-note">${escapeHTML(note)}</p>
     </article>
   `;
@@ -2953,7 +3137,7 @@ function renderFoodMap() {
   if (sortBtn) sortBtn.textContent = foodMapSort === 'reaction' ? 'Highest reaction' : 'Most recent';
 
   let cards = model.cards.filter(card => {
-    if (search && !`${card.name} ${card.ingredients.join(' ')}`.toLowerCase().includes(search)) return false;
+    if (search && !`${card.name} ${card.ingredients.join(' ')} ${card.aliases.join(' ')}`.toLowerCase().includes(search)) return false;
     if (foodMapFilter === 'all') return true;
     if (foodMapFilter === 'important') return card.status === 'trigger' || card.status === 'watch';
     return card.status === foodMapFilter;
@@ -3052,8 +3236,11 @@ function openModal(type, entryId = null) {
     });
   });
 
+  if (type === 'food') setupFoodPresetUI();
+
   if (editingEntry) {
     fillForm(type, editingEntry);
+    if (type === 'food') updateFoodPresetSuggestion();
     const submit = body.querySelector('.btn-submit');
     if (submit) submit.textContent = 'Save changes';
   }
@@ -3145,7 +3332,11 @@ function fillForm(type, entry) {
     setFieldValue('f_notes', d.notes);
   } else if (type === 'food') {
     setFieldValue('f_date', entry.dateKey || currentDay);
-    setFieldValue('f_item', d.item);
+    setFieldValue('f_item', d.item_raw || d.food_alias || d.item);
+    setFieldValue('f_item_raw', d.item_raw || d.food_alias || d.item);
+    setFieldValue('f_canonical_food', d.food_preset_mode === 'separate' ? '' : (d.canonical_food || d.item));
+    const canonicalField = document.getElementById('f_canonical_food');
+    if (canonicalField && d.food_preset_mode === 'separate') canonicalField.dataset.auto = 'disabled';
     setFieldValue('f_amount', d.amount);
     setFieldValue('f_ingredients', d.ingredients);
     setFieldValue('f_fluid_ml', d.fluid_ml);
@@ -3248,8 +3439,11 @@ function buildForm(type, timeStr) {
     </div>
     <div class="form-group">
       <label class="form-label">What did you have?</label>
-      <input class="form-input" type="text" id="f_item" placeholder="e.g. Chicken broth, low-fat milk, rice...">
+      <input class="form-input" type="text" id="f_item" placeholder="e.g. Chicken broth, low-fat milk, rice..." autocomplete="off">
+      <input type="hidden" id="f_item_raw">
+      <input type="hidden" id="f_canonical_food">
     </div>
+    <div class="food-preset-panel hidden" id="foodPresetPanel"></div>
     <div class="form-group">
       <label class="form-label">Amount / quantity</label>
       <input class="form-input" type="text" id="f_amount" placeholder="e.g. 200ml, 1 cup, 1 bowl">
@@ -3426,6 +3620,77 @@ function getUrgency() {
   return el ? el.textContent : '';
 }
 
+function setupFoodPresetUI() {
+  const item = document.getElementById('f_item');
+  if (!item) return;
+  item.addEventListener('input', updateFoodPresetSuggestion);
+  updateFoodPresetSuggestion();
+}
+
+function chooseFoodPreset(name) {
+  const canonical = document.getElementById('f_canonical_food');
+  if (canonical) {
+    canonical.value = name || '';
+    canonical.dataset.auto = name ? 'false' : 'disabled';
+  }
+  updateFoodPresetSuggestion();
+}
+
+function updateFoodPresetSuggestion() {
+  const item = document.getElementById('f_item');
+  const panel = document.getElementById('foodPresetPanel');
+  const rawField = document.getElementById('f_item_raw');
+  const canonicalField = document.getElementById('f_canonical_food');
+  if (!item || !panel || !rawField || !canonicalField) return;
+  const raw = displayFoodName(item.value);
+  rawField.value = item.value || '';
+  const match = matchFoodPreset(item.value);
+  if (!match) {
+    canonicalField.value = '';
+    panel.classList.add('hidden');
+    panel.innerHTML = '';
+    return;
+  }
+  if (canonicalField.dataset.auto !== 'disabled' && (!canonicalField.value || canonicalField.dataset.auto === 'true')) {
+    canonicalField.value = match.name;
+    canonicalField.dataset.auto = 'true';
+  }
+  const chosen = canonicalField.value || match.name;
+  if (canonicalField.dataset.auto === 'disabled') {
+    panel.classList.remove('hidden');
+    panel.innerHTML = `
+      <div class="food-preset-top">
+        <div>
+          <div class="food-preset-title">Save as separate food</div>
+          <div class="food-preset-copy">This will create its own Food Map item instead of grouping under ${escapeHTML(match.name)}.</div>
+        </div>
+      </div>
+      <div class="food-preset-actions">
+        <button type="button" class="food-preset-action primary" onclick="chooseFoodPreset('${escapeHTML(match.name)}')">Use ${escapeHTML(match.name)}</button>
+        <button type="button" class="food-preset-action" onclick="chooseFoodPreset('')">Keep separate</button>
+      </div>
+    `;
+    return;
+  }
+  const chosenPreset = foodPresetByName(chosen) || match;
+  const aliasText = normalizeFoodName(raw) !== normalizeFoodName(chosen) ? raw : '';
+  panel.classList.remove('hidden');
+  panel.innerHTML = `
+    <div class="food-preset-top">
+      <div>
+        <div class="food-preset-title">${escapeHTML(chosenPreset.icon || '🍽️')} Save under preset: ${escapeHTML(chosen)}</div>
+        <div class="food-preset-copy">Food Map will group similar wording under this clean food name.</div>
+      </div>
+      <div class="food-preset-confidence">${escapeHTML(match.confidence)}%</div>
+    </div>
+    ${aliasText ? `<div class="food-preset-alias"><strong>Entered:</strong> ${escapeHTML(aliasText)}<br><strong>Variation saved under:</strong> ${escapeHTML(chosen)}</div>` : ''}
+    <div class="food-preset-actions">
+      <button type="button" class="food-preset-action primary" onclick="chooseFoodPreset('${escapeHTML(match.name)}')">Use ${escapeHTML(match.name)}</button>
+      <button type="button" class="food-preset-action" onclick="chooseFoodPreset('')">Keep separate</button>
+    </div>
+  `;
+}
+
 function submitEntry(type) {
   const id = editingEntryId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const timeEl = document.getElementById('f_time');
@@ -3446,8 +3711,17 @@ function submitEntry(type) {
       notes: (document.getElementById('f_notes')||{}).value || ''
     };
   } else if (type === 'food') {
+    const rawItem = (document.getElementById('f_item_raw')||{}).value || (document.getElementById('f_item')||{}).value || '';
+    const canonicalField = document.getElementById('f_canonical_food');
+    const canonical = (canonicalField||{}).value || '';
+    const presetMode = canonical ? 'preset' : (canonicalField?.dataset.auto === 'disabled' ? 'separate' : '');
+    const savedName = canonical || rawItem;
     data = {
-      item: (document.getElementById('f_item')||{}).value || '',
+      item: savedName,
+      item_raw: rawItem,
+      canonical_food: canonical,
+      food_alias: canonical && normalizeFoodName(rawItem) !== normalizeFoodName(canonical) ? rawItem : '',
+      food_preset_mode: presetMode,
       amount: (document.getElementById('f_amount')||{}).value || '',
       ingredients: (document.getElementById('f_ingredients')||{}).value || '',
       fluid_ml: (document.getElementById('f_fluid_ml')||{}).value || '',
@@ -3597,7 +3871,7 @@ function csvCell(value) {
 function entryReportTitle(entry) {
   const d = entry.data || {};
   if (entry.type === 'poop') return d.consistency || 'Bowel movement';
-  if (entry.type === 'food') return d.item || 'Food / drink';
+  if (entry.type === 'food') return d.canonical_food || d.item || 'Food / drink';
   if (entry.type === 'med') return [d.name, d.dose].filter(Boolean).join(' ') || 'Medication';
   if (entry.type === 'symptom') return d.symptom || 'Symptom';
   if (entry.type === 'sleep') return `Sleep ${d.total || ''}`.trim();
@@ -3615,6 +3889,7 @@ function entryReportDetails(entry) {
     d.notes || ''
   ].filter(Boolean).join('; ');
   if (entry.type === 'food') return [
+    d.food_alias ? `entered as ${d.food_alias}` : '',
     d.ftype || '',
     d.amount || '',
     d.ingredients ? `ingredients ${d.ingredients}` : '',
