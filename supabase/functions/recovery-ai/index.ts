@@ -42,7 +42,7 @@ function text(value: unknown) {
 function entryTitle(entry: RecoveryEntry) {
   const d = entry.data || {};
   if (entry.type === "poop") return text(d.consistency) || "Bowel movement";
-  if (entry.type === "food") return text(d.canonical_food) || text(d.item) || "Food / drink";
+  if (entry.type === "food") return text(d.food_variation_name) || text(d.food_family_name) || text(d.canonical_food) || text(d.item) || "Food / drink";
   if (entry.type === "med") return [text(d.name), text(d.dose)].filter(Boolean).join(" ") || "Medication";
   if (entry.type === "symptom") return text(d.symptom) || "Symptom";
   if (entry.type === "sleep") return `Sleep ${text(d.total)}`.trim();
@@ -65,11 +65,18 @@ function entryDetails(entry: RecoveryEntry) {
   }
   if (entry.type === "food") {
     return [
+      text(d.food_family_name) ? `food family ${text(d.food_family_name)}` : "",
+      text(d.food_variation_name) ? `variation ${text(d.food_variation_name)}` : "",
       text(d.food_preset_mode) ? `food family mode ${text(d.food_preset_mode)}` : "",
       text(d.food_alias) ? `entered as ${text(d.food_alias)}` : "",
-      text(d.ftype),
-      text(d.amount),
+      text(d.food_type) || text(d.ftype),
+      text(d.portion_count) ? `portion count ${text(d.portion_count)}` : "",
+      text(d.portion_label) || text(d.amount),
       text(d.ingredients) ? `ingredients ${text(d.ingredients)}` : "",
+      text(d.calories) ? `${text(d.calories)} cal` : "",
+      text(d.protein_g) ? `Protein ${text(d.protein_g)}g` : "",
+      text(d.carbs_g) ? `Carbs ${text(d.carbs_g)}g` : "",
+      text(d.fat_g) ? `Fat ${text(d.fat_g)}g` : "",
       text(d.fluid_ml) ? `${text(d.fluid_ml)} ml` : "",
       text(d.trial_status) ? `food trial ${text(d.trial_status)}` : "",
       text(d.tolerated) ? `tolerated ${text(d.tolerated)}` : "",
@@ -146,6 +153,7 @@ Important safety rules:
 - Keep the tone calm, simple, and useful for a non-technical patient.
 - Use recent history. Compare today's pattern with earlier days when the history supports it.
 - Use the Food Map summary when discussing tolerance. Treat it as a logging signal, not proof of causation.
+- When food library fields are present, use food family, variation, portion count, food type, ingredients, and optional nutrition as context. Do not make nutrition dominate the answer.
 - For food insights, mention bowel movement count, loose/urgent bowel movements, symptoms after the food, and evidence strength when provided.
 - If the data is missing or unclear, say what should be logged next time.
 - If there is not enough data to infer a pattern, say that clearly.

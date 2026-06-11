@@ -1,7 +1,8 @@
-const CACHE_NAME = 'recovery-log-v20';
+const CACHE_NAME = 'recovery-log-v21';
 const APP_SHELL = [
   './',
   './index.html',
+  './app.js',
   './supabase-config.js',
   './manifest.webmanifest',
   './icon.svg'
