@@ -52,14 +52,27 @@ function entryTitle(entry: RecoveryEntry) {
 function entryDetails(entry: RecoveryEntry) {
   const d = entry.data || {};
   if (entry.type === "poop") {
-    const linkedFoods = Array.isArray(d.recent_food_ids) ? d.recent_food_ids.length : 0;
+    const linkedFoodNames = Array.isArray(d.linked_foods)
+      ? d.linked_foods
+        .map((food) => {
+          if (!food || typeof food !== "object") return "";
+          const item = food as Record<string, unknown>;
+          return text(item.food_variation_name) || text(item.food_family_name) || text(item.canonical_food) || text(item.item_raw);
+        })
+        .filter(Boolean)
+      : [];
+    const linkedFoods = linkedFoodNames.length || (Array.isArray(d.linked_food_entry_ids)
+      ? d.linked_food_entry_ids.length
+      : Array.isArray(d.recent_food_ids)
+        ? d.recent_food_ids.length
+        : 0);
     return [
       text(d.bristol) ? `Bristol stool type ${text(d.bristol)}/7` : "",
       text(d.consistency) ? `consistency ${text(d.consistency)}` : "",
       text(d.urgency) ? `urgency ${text(d.urgency)}/5` : "",
       text(d.gas) ? `gas ${text(d.gas)}` : "",
       text(d.blood) ? `blood ${text(d.blood)}` : "",
-      linkedFoods ? `${linkedFoods} linked food(s)` : "",
+      linkedFoodNames.length ? `Linked recent foods/drinks: ${linkedFoodNames.join(", ")}` : linkedFoods ? `${linkedFoods} linked food(s)` : "",
       text(d.notes)
     ].filter(Boolean).join("; ");
   }
@@ -153,6 +166,7 @@ Important safety rules:
 - Keep the tone calm, simple, and useful for a non-technical patient.
 - Use recent history. Compare today's pattern with earlier days when the history supports it.
 - Use the Food Map summary when discussing tolerance. Treat it as a logging signal, not proof of causation.
+- Treat confirmed linked foods/drinks on bowel movement logs as stronger logging signals than timing matches, but never as proof of causation.
 - When food library fields are present, use food family, variation, portion count, food type, ingredients, and optional nutrition as context. Do not make nutrition dominate the answer.
 - For food insights, mention bowel movement count, loose/urgent bowel movements, symptoms after the food, and evidence strength when provided.
 - If the data is missing or unclear, say what should be logged next time.

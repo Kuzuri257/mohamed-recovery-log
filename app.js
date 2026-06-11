@@ -948,7 +948,12 @@ function buildEntryHTML(e, i) {
     }
     if (e.data.urgency) tags.push({ cls: 'tag-poop', txt: `Urgency ${e.data.urgency}/5` });
     if (e.data.gas) tags.push({ cls: 'tag-poop', txt: `Gas: ${e.data.gas}` });
-    if (Array.isArray(e.data.recent_food_ids) && e.data.recent_food_ids.length) tags.push({ cls: 'tag-food', txt: `${e.data.recent_food_ids.length} food link(s)` });
+    const linkedFoodCount = Array.isArray(e.data.linked_food_entry_ids)
+      ? e.data.linked_food_entry_ids.length
+      : Array.isArray(e.data.recent_food_ids)
+        ? e.data.recent_food_ids.length
+        : 0;
+    if (linkedFoodCount) tags.push({ cls: 'tag-food', txt: `${linkedFoodCount} linked food${linkedFoodCount === 1 ? '' : 's'}` });
     if (e.data.notes) tags.push({ cls: 'tag-note', txt: e.data.notes });
   } else if (e.type === 'food') {
     title = e.data.food_variation_name || e.data.food_family_name || e.data.canonical_food || e.data.item || 'Food / drink';
@@ -1335,9 +1340,44 @@ function foodMapEntries(daysBack = 14) {
 }
 
 function linkedFoodsForOutcome(outcome, foodsById, allFoods) {
-  const explicitIds = Array.isArray(outcome.data?.recent_food_ids) ? outcome.data.recent_food_ids.filter(Boolean) : [];
+  const snapshotFoods = Array.isArray(outcome.data?.linked_foods)
+    ? outcome.data.linked_foods.filter(food => food && (food.entry_id || food.item_raw || food.food_family_name))
+    : [];
+  const explicitIds = Array.isArray(outcome.data?.linked_food_entry_ids)
+    ? outcome.data.linked_food_entry_ids.filter(Boolean)
+    : Array.isArray(outcome.data?.recent_food_ids)
+      ? outcome.data.recent_food_ids.filter(Boolean)
+      : [];
   const explicit = explicitIds.map(id => foodsById.get(id)).filter(Boolean);
-  if (explicit.length) return explicit.map(food => ({ food, confidence: 'marked' }));
+  if (snapshotFoods.length || explicit.length) {
+    const explicitById = new Map(explicit.map(food => [food.id, food]));
+    const confirmed = snapshotFoods.map(snapshot => {
+      const existing = explicitById.get(snapshot.entry_id);
+      if (existing) return existing;
+      return {
+        id: snapshot.entry_id || `snapshot-${normalizeFoodName(snapshot.food_family_name || snapshot.item_raw || 'food')}`,
+        type: 'food',
+        time: snapshot.time || outcome.time,
+        dateKey: outcome.dateKey,
+        data: {
+          item: snapshot.item_raw || snapshot.canonical_food || snapshot.food_family_name || 'Food / drink',
+          item_raw: snapshot.item_raw || '',
+          canonical_food: snapshot.canonical_food || snapshot.food_family_name || '',
+          food_family_name: snapshot.food_family_name || snapshot.canonical_food || snapshot.item_raw || 'Food / drink',
+          food_variation_name: snapshot.food_variation_name || '',
+          food_preset_id: snapshot.food_preset_id || '',
+          food_variation_id: snapshot.food_variation_id || '',
+          portion_count: snapshot.portion_count || '',
+          food_type: snapshot.food_type || '',
+          ftype: foodTypeToLegacyFtype(snapshot.food_type || 'Unknown')
+        }
+      };
+    });
+    explicit.forEach(food => {
+      if (!confirmed.some(item => item.id === food.id)) confirmed.push(food);
+    });
+    return confirmed.map(food => ({ food, confidence: 'confirmed' }));
+  }
 
   const outcomeTs = entryDateTime(outcome.dateKey, outcome.time);
   const windowMs = foodRelationWindowHours(outcome.type) * 60 * 60 * 1000;
@@ -1357,7 +1397,7 @@ function buildFoodMapModel() {
   const foodsById = new Map(foods.map(entry => [entry.id, entry]));
   const groups = new Map();
 
-  foods.forEach(entry => {
+  function ensureFoodGroup(entry) {
     const rawName = foodRawName(entry);
     const canonicalName = foodCanonicalName(entry);
     const key = foodCanonicalKey(entry) || entry.id;
@@ -1388,6 +1428,11 @@ function buildFoodMapModel() {
       });
     }
     const group = groups.get(key);
+    return { group, canonicalName };
+  }
+
+  foods.forEach(entry => {
+    const { group, canonicalName } = ensureFoodGroup(entry);
     group.name = canonicalName;
     group.foodType = group.foodType || entry.data?.food_type || foodPresetById(entry.data?.food_preset_id)?.food_type || '';
     group.archived = group.archived || !!foodPresetById(entry.data?.food_preset_id)?.archived;
@@ -1408,9 +1453,9 @@ function buildFoodMapModel() {
   outcomes.forEach(outcome => {
     linkedFoodsForOutcome(outcome, foodsById, foods).forEach(({ food, confidence }) => {
       const key = foodCanonicalKey(food) || food.id;
-      const group = groups.get(key);
-      if (!group) return;
-      if (confidence === 'marked') group.markedLinks += 1;
+      const existing = groups.get(key);
+      const group = existing || ensureFoodGroup(food).group;
+      if (confidence === 'confirmed') group.markedLinks += 1;
       else group.timingLinks += 1;
       if (outcome.type === 'poop') {
         group.bmLinks += 1;
@@ -1493,7 +1538,8 @@ function foodCardHTML(card) {
     card.trialMeals ? `${card.trialMeals} new trial` : '',
     card.bmLinks ? `${card.bmLinks} BM after` : '',
     card.symptomLinks ? `${card.symptomLinks} symptom after` : '',
-    card.markedLinks ? `${card.markedLinks} marked link` : ''
+    card.markedLinks ? `${card.markedLinks} confirmed link${card.markedLinks === 1 ? '' : 's'}` : '',
+    card.timingLinks ? `${card.timingLinks} timing match${card.timingLinks === 1 ? '' : 'es'}` : ''
   ].filter(Boolean);
   const note = card.status === 'trigger'
     ? `Logged pattern: ${card.looseBms} loose BM(s), ${card.urgentBms} urgent BM(s), and ${card.strongSymptoms} strong symptom(s) after this food.`
@@ -1522,9 +1568,14 @@ function foodCardHTML(card) {
         <div class="food-score">${escapeHTML(card.symptomLinks)}</div>
       </div>
       <div class="food-signal-row">
-        <div class="food-signal-label">Evidence</div>
+        <div class="food-signal-label">Confirmed links</div>
         <div class="food-dots">${foodDots(confidenceDots, card.markedLinks ? 'ok' : 'unknown')}</div>
-        <div class="food-score">${escapeHTML(card.markedLinks)}/${escapeHTML(card.timingLinks)}</div>
+        <div class="food-score">${escapeHTML(card.markedLinks)}</div>
+      </div>
+      <div class="food-signal-row">
+        <div class="food-signal-label">Timing matches</div>
+        <div class="food-dots">${foodDots(Math.min(5, Math.ceil(card.timingLinks / 2)), 'unknown')}</div>
+        <div class="food-score">${escapeHTML(card.timingLinks)}</div>
       </div>
       <div class="food-meter ${escapeHTML(card.status)}"><span style="width:${width}%"></span></div>
       <div class="food-meter-label"><span>Reaction signal</span><span>${escapeHTML(card.reactionScore)}/100</span></div>
@@ -1641,6 +1692,9 @@ function recentFoodChipHTML(food) {
 function foodLibraryRowHTML(food) {
   const variations = foodVariationsForPreset(food.id);
   const nutrition = foodNutritionLine(food);
+  const primaryAction = food.archived
+    ? `<button class="food-row-action primary" onclick="unarchiveFoodPreset('${escapeHTML(food.id)}')">Unarchive</button>`
+    : `<button class="food-row-action primary" onclick="openFoodLogForPreset('${escapeHTML(food.id)}')">Log</button>`;
   return `
     <div class="food-library-row ${food.id === selectedFoodPresetId ? 'selected' : ''}">
       <button class="food-row-main" onclick="selectFoodLibraryPreset('${escapeHTML(food.id)}', true)">
@@ -1649,7 +1703,7 @@ function foodLibraryRowHTML(food) {
         ${nutrition ? `<div class="food-row-meta">${escapeHTML(nutrition)}</div>` : ''}
       </button>
       <div class="food-row-actions">
-        <button class="food-row-action primary" onclick="openFoodLogForPreset('${escapeHTML(food.id)}')">Log</button>
+        ${primaryAction}
         <button class="food-row-action" onclick="openFoodLibrarySheet('detail', '${escapeHTML(food.id)}')">More</button>
       </div>
     </div>
@@ -1674,6 +1728,18 @@ function renderFoodLibraryDetail() {
     .map(entry => `${formatBahrainDate(entry.dateKey, { day: 'numeric', month: 'short' })} ${entry.time}`)
     .join(' · ');
   const foodMap = buildFoodMapModel().cards.find(card => card.key === food.id || normalizeFoodName(card.name) === normalizeFoodName(food.name));
+  const actionButtons = food.archived
+    ? `
+      <button class="tool-btn primary" onclick="unarchiveFoodPreset('${escapeHTML(food.id)}')">Unarchive</button>
+      <button class="tool-btn" onclick="openFoodLibrarySheet('edit', '${escapeHTML(food.id)}')">Edit</button>
+      <button class="tool-btn" onclick="openFoodLibrarySheet('variation', '${escapeHTML(food.id)}')">Add variation</button>
+    `
+    : `
+      <button class="tool-btn primary" onclick="openFoodLogForPreset('${escapeHTML(food.id)}')">Log</button>
+      <button class="tool-btn" onclick="openFoodLibrarySheet('edit', '${escapeHTML(food.id)}')">Edit</button>
+      <button class="tool-btn" onclick="openFoodLibrarySheet('variation', '${escapeHTML(food.id)}')">Add variation</button>
+      <button class="tool-btn" onclick="archiveFoodPreset('${escapeHTML(food.id)}')">Archive</button>
+    `;
   const html = `
     <div class="food-detail-title">${escapeHTML(food.name)}</div>
     <p class="food-detail-meta">${escapeHTML(normalizeFoodType(food.food_type))}${food.default_portion_label ? ` · Default: ${escapeHTML(food.default_portion_label)}` : ''}</p>
@@ -1688,10 +1754,7 @@ function renderFoodLibraryDetail() {
     <div class="food-detail-note"><strong>Recent logs</strong><br>${escapeHTML(recentLogs || 'No recent logs yet')}</div>
     <div class="food-detail-note"><strong>Food Map signal</strong><br>${foodMap ? `${escapeHTML(foodMap.label)} · ${escapeHTML(foodMap.reactionScore)}/100` : 'Not enough history yet'}</div>
     <div class="food-detail-actions">
-      <button class="tool-btn primary" onclick="openFoodLogForPreset('${escapeHTML(food.id)}')">Log</button>
-      <button class="tool-btn" onclick="openFoodLibrarySheet('edit', '${escapeHTML(food.id)}')">Edit</button>
-      <button class="tool-btn" onclick="openFoodLibrarySheet('variation', '${escapeHTML(food.id)}')">Add variation</button>
-      <button class="tool-btn" onclick="archiveFoodPreset('${escapeHTML(food.id)}')">Archive</button>
+      ${actionButtons}
     </div>
   `;
   detail.innerHTML = html;
@@ -1737,6 +1800,8 @@ function openFoodLibrarySheet(kind, id = '') {
   if (!body || !title) return;
   editingEntryId = null;
   if (kind === 'detail' && food) {
+    selectedFoodPresetId = food.id;
+    renderFoodLibraryDetail();
     title.textContent = food.name;
     body.innerHTML = renderFoodLibraryDetailSheet(food);
   } else if (kind === 'edit' && food) {
@@ -1787,7 +1852,9 @@ function buildFoodPresetForm(food) {
     </div>
     <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="preset_notes">${escapeHTML(food?.notes || '')}</textarea></div>
     <button class="btn-submit" onclick="saveFoodPresetFromForm()">${isEdit ? 'Save changes' : 'Save food'}</button>
-    ${isEdit ? `<button class="btn-cancel" onclick="archiveFoodPreset('${escapeHTML(food.id)}')">Archive</button>` : ''}
+    ${isEdit ? (food.archived
+      ? `<button class="btn-submit" onclick="unarchiveFoodPreset('${escapeHTML(food.id)}')">Unarchive</button>`
+      : `<button class="btn-cancel" onclick="archiveFoodPreset('${escapeHTML(food.id)}')">Archive</button>`) : ''}
     <button class="btn-cancel" onclick="closeModal()">Cancel</button>
   `;
 }
@@ -1889,6 +1956,17 @@ function archiveFoodPreset(id) {
   closeModal();
 }
 
+function unarchiveFoodPreset(id) {
+  const food = foodPresetById(id);
+  if (!food) return;
+  food.archived = false;
+  food.updated_at = new Date().toISOString();
+  selectedFoodPresetId = id;
+  if (foodLibraryFilter === 'archived') foodLibraryFilter = 'all';
+  persistFoodLibrary();
+  closeModal();
+}
+
 // ─── Day switching ─────────────────────────────────────────────────────────────
 function switchDay(key) {
   if (!allDays[key]) allDays[key] = [];
@@ -1919,35 +1997,13 @@ function openModal(type, entryId = null) {
   body.innerHTML = buildForm(type, timeStr);
   document.getElementById('modalOverlay').classList.remove('hidden');
 
-  // Chip interactions
-  body.querySelectorAll('.chip').forEach(c => {
-    c.addEventListener('click', () => {
-      const grp = c.dataset.group;
-      if (grp && c.dataset.multi !== 'true') {
-        body.querySelectorAll(`.chip[data-group="${grp}"]`).forEach(x => x.classList.remove('selected'));
-      }
-      c.classList.toggle('selected');
-    });
-  });
-
-  body.querySelectorAll('.urgency-btn').forEach((b,i) => {
-    b.addEventListener('click', () => {
-      body.querySelectorAll('.urgency-btn').forEach(x => x.className = 'urgency-btn');
-      b.classList.add(`sel-${i+1}`);
-      b.dataset.selected = 'true';
-    });
-  });
-
-  body.querySelectorAll('.med-preset').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const name = document.getElementById('f_name');
-      const dose = document.getElementById('f_dose');
-      if (name) name.value = btn.dataset.name || '';
-      if (dose) dose.value = btn.dataset.dose || '';
-    });
-  });
+  bindModalControls(body);
 
   if (type === 'food') setupFoodPresetUI();
+  if (type === 'poop') {
+    const timeInput = document.getElementById('f_time');
+    if (timeInput) timeInput.addEventListener('change', refreshRecentFoodLinks);
+  }
 
   if (editingEntry) {
     fillForm(type, editingEntry);
@@ -1955,6 +2011,41 @@ function openModal(type, entryId = null) {
     const submit = body.querySelector('.btn-submit');
     if (submit) submit.textContent = 'Save changes';
   }
+}
+
+function bindModalControls(scope = document) {
+  scope.querySelectorAll('.chip').forEach(c => {
+    if (c.dataset.bound === 'true') return;
+    c.dataset.bound = 'true';
+    c.addEventListener('click', () => {
+      const grp = c.dataset.group;
+      if (grp && c.dataset.multi !== 'true') {
+        scope.querySelectorAll(`.chip[data-group="${grp}"]`).forEach(x => x.classList.remove('selected'));
+      }
+      c.classList.toggle('selected');
+    });
+  });
+
+  scope.querySelectorAll('.urgency-btn').forEach((b,i) => {
+    if (b.dataset.bound === 'true') return;
+    b.dataset.bound = 'true';
+    b.addEventListener('click', () => {
+      scope.querySelectorAll('.urgency-btn').forEach(x => x.className = 'urgency-btn');
+      b.classList.add(`sel-${i+1}`);
+      b.dataset.selected = 'true';
+    });
+  });
+
+  scope.querySelectorAll('.med-preset').forEach(btn => {
+    if (btn.dataset.bound === 'true') return;
+    btn.dataset.bound = 'true';
+    btn.addEventListener('click', () => {
+      const name = document.getElementById('f_name');
+      const dose = document.getElementById('f_dose');
+      if (name) name.value = btn.dataset.name || '';
+      if (dose) dose.value = btn.dataset.dose || '';
+    });
+  });
 }
 
 function setFieldValue(id, value) {
@@ -2013,21 +2104,103 @@ function recentFoodEntries(beforeTime, hours = 12) {
     .reverse();
 }
 
+function foodEntryDisplayName(entry) {
+  const d = entry?.data || {};
+  return d.food_variation_name || d.food_family_name || d.canonical_food || d.item_raw || d.item || 'Food / drink';
+}
+
+function minutesBeforeOutcome(foodEntry, outcomeTime, outcomeDateKey = currentDay) {
+  const foodTs = entryDateTime(foodEntry.dateKey || currentDay, foodEntry.time);
+  const outcomeTs = entryDateTime(outcomeDateKey, outcomeTime || currentBahrainTime());
+  return Math.max(0, Math.round((outcomeTs - foodTs) / 60000));
+}
+
+function minutesBeforeLabel(minutes) {
+  if (minutes < 60) return `${minutes}m before`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours}h${mins ? ` ${mins}m` : ''} before`;
+}
+
+function linkedFoodSnapshot(entry, outcomeTime, outcomeDateKey = currentDay) {
+  const d = entry.data || {};
+  return {
+    entry_id: entry.id,
+    time: entry.time || '',
+    item_raw: d.item_raw || d.item || '',
+    canonical_food: d.canonical_food || d.food_family_name || d.item || '',
+    food_family_name: d.food_family_name || d.canonical_food || d.item || '',
+    food_variation_name: d.food_variation_name || '',
+    food_preset_id: d.food_preset_id || '',
+    food_variation_id: d.food_variation_id || '',
+    portion_count: d.portion_count || '',
+    food_type: d.food_type || d.ftype || '',
+    minutes_before_bm: minutesBeforeOutcome(entry, outcomeTime, outcomeDateKey)
+  };
+}
+
+function selectedLinkedFoodIdsForEditing() {
+  if (!editingEntryId) return null;
+  const entry = (allDays[currentDay] || []).find(item => item.id === editingEntryId);
+  if (!entry) return null;
+  if (Array.isArray(entry.data?.linked_food_entry_ids)) return entry.data.linked_food_entry_ids.filter(Boolean);
+  if (Array.isArray(entry.data?.recent_food_ids)) return entry.data.recent_food_ids.filter(Boolean);
+  return [];
+}
+
 function recentFoodLinkHTML(timeStr) {
   const foods = recentFoodEntries(timeStr, 12);
-  if (!foods.length) return '';
+  const selectedForEdit = selectedLinkedFoodIdsForEditing();
+  if (!foods.length) {
+    return `
+      <div class="form-group" id="recentFoodLinkSection">
+        <label class="form-label">Recent foods before this bowel movement</label>
+        <p class="food-link-help">No food or drink logs were found in the previous 12 hours. You can still save this bowel movement without linking foods.</p>
+      </div>
+    `;
+  }
+  const selectedIds = new Set(selectedForEdit || foods.map(entry => entry.id));
   return `
-    <div class="form-group">
-      <label class="form-label">Recent foods possibly related</label>
+    <div class="form-group" id="recentFoodLinkSection">
+      <label class="form-label">Recent foods before this bowel movement</label>
+      <p class="food-link-help">Confirm which foods or drinks should be linked to this bowel movement. This helps Food Map notice patterns over time.</p>
       <div class="chip-group">
         ${foods.map(entry => {
-          const label = `${entry.data?.item || 'Food'} · ${entry.time || ''}`;
-          return `<button class="chip" data-group="recent_food_ids" data-multi="true" data-value="${escapeHTML(entry.id)}">${escapeHTML(label)}</button>`;
+          const minutes = minutesBeforeOutcome(entry, timeStr);
+          const label = `${foodEntryDisplayName(entry)} — ${minutesBeforeLabel(minutes)}`;
+          return `<button class="chip ${selectedIds.has(entry.id) ? 'selected' : ''}" data-group="recent_food_ids" data-multi="true" data-value="${escapeHTML(entry.id)}">${escapeHTML(label)}</button>`;
         }).join('')}
       </div>
-      <p class="food-link-help">Choose any foods that may be connected. Leave blank if unsure.</p>
+      <div class="food-preset-actions" style="margin-top:8px">
+        <button type="button" class="food-preset-action" onclick="selectAllRecentFoodLinks()">Select all</button>
+        <button type="button" class="food-preset-action" onclick="clearRecentFoodLinks()">Clear</button>
+        <button type="button" class="food-preset-action" onclick="focusRecentFoodLinks()">Edit linked foods</button>
+      </div>
     </div>
   `;
+}
+
+function refreshRecentFoodLinks() {
+  const section = document.getElementById('recentFoodLinkSection');
+  if (!section) return;
+  const time = (document.getElementById('f_time') || {}).value || currentBahrainTime();
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = recentFoodLinkHTML(time).trim();
+  section.replaceWith(wrapper.firstElementChild);
+  bindModalControls(document.getElementById('modalBody'));
+}
+
+function selectAllRecentFoodLinks() {
+  document.querySelectorAll('.chip[data-group="recent_food_ids"]').forEach(chip => chip.classList.add('selected'));
+}
+
+function clearRecentFoodLinks() {
+  document.querySelectorAll('.chip[data-group="recent_food_ids"]').forEach(chip => chip.classList.remove('selected'));
+}
+
+function focusRecentFoodLinks() {
+  const section = document.getElementById('recentFoodLinkSection');
+  if (section) section.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function fillForm(type, entry) {
@@ -2039,7 +2212,7 @@ function fillForm(type, entry) {
     selectUrgency(d.urgency);
     selectChip('gas', d.gas);
     selectChip('blood', d.blood);
-    selectChipsByValue('recent_food_ids', d.recent_food_ids);
+    selectChipsByValue('recent_food_ids', d.linked_food_entry_ids || d.recent_food_ids);
     setFieldValue('f_notes', d.notes);
   } else if (type === 'food') {
     setFieldValue('f_date', entry.dateKey || currentDay);
@@ -2484,13 +2657,21 @@ function submitEntry(type) {
   let data = {};
 
   if (type === 'poop') {
+    const linkedFoodEntryIds = getSelectedValues('recent_food_ids');
+    const foodById = new Map(allEntriesWithDates().filter(entry => entry.type === 'food').map(entry => [entry.id, entry]));
+    const linkedFoods = linkedFoodEntryIds
+      .map(entryId => foodById.get(entryId))
+      .filter(Boolean)
+      .map(entry => linkedFoodSnapshot(entry, time, targetDate));
     data = {
       bristol: getSelected('bristol'),
       consistency: getSelected('consistency'),
       urgency: getUrgency(),
       gas: getSelected('gas'),
       blood: getSelected('blood'),
-      recent_food_ids: getSelectedValues('recent_food_ids'),
+      recent_food_ids: linkedFoodEntryIds,
+      linked_food_entry_ids: linkedFoodEntryIds,
+      linked_foods: linkedFoods,
       notes: (document.getElementById('f_notes')||{}).value || ''
     };
   } else if (type === 'food') {
@@ -2769,6 +2950,26 @@ function entryReportTitle(entry) {
   return d.text || 'Note';
 }
 
+function linkedFoodNamesForEntry(entry) {
+  const d = entry.data || {};
+  if (Array.isArray(d.linked_foods) && d.linked_foods.length) {
+    return d.linked_foods
+      .map(food => food.food_variation_name || food.food_family_name || food.canonical_food || food.item_raw)
+      .filter(Boolean);
+  }
+  const ids = Array.isArray(d.linked_food_entry_ids)
+    ? d.linked_food_entry_ids
+    : Array.isArray(d.recent_food_ids)
+      ? d.recent_food_ids
+      : [];
+  if (!ids.length) return [];
+  const foodsById = new Map(allEntriesWithDates().filter(item => item.type === 'food').map(item => [item.id, item]));
+  return ids
+    .map(id => foodsById.get(id))
+    .filter(Boolean)
+    .map(foodEntryDisplayName);
+}
+
 function entryReportDetails(entry) {
   const d = entry.data || {};
   if (entry.type === 'poop') return [
@@ -2776,7 +2977,7 @@ function entryReportDetails(entry) {
     d.urgency ? `urgency ${d.urgency}/5` : '',
     d.gas ? `gas ${d.gas}` : '',
     d.blood ? `blood ${d.blood}` : '',
-    Array.isArray(d.recent_food_ids) && d.recent_food_ids.length ? `${d.recent_food_ids.length} linked food(s)` : '',
+    linkedFoodNamesForEntry(entry).length ? `Linked recent foods/drinks: ${linkedFoodNamesForEntry(entry).join(', ')}` : '',
     d.notes || ''
   ].filter(Boolean).join('; ');
   if (entry.type === 'food') return [
@@ -3383,6 +3584,7 @@ Object.assign(window, {
   adjustPortionCount,
   archiveFoodPreset,
   askAIQuestion,
+  clearRecentFoodLinks,
   closeModal,
   closeOnOverlay,
   deleteEntryFromButton,
@@ -3390,6 +3592,7 @@ Object.assign(window, {
   exportBackup,
   exportDoctorCSV,
   exportDoctorPDF,
+  focusRecentFoodLinks,
   generateAISummary,
   generateEntryInsight,
   goDay,
@@ -3400,6 +3603,7 @@ Object.assign(window, {
   renderFoodLibrary,
   saveFoodPresetFromForm,
   saveFoodVariationFromForm,
+  selectAllRecentFoodLinks,
   selectFoodForLogging,
   selectFoodLibraryPreset,
   sendSignInCode,
@@ -3415,6 +3619,7 @@ Object.assign(window, {
   toggleFoodMapSort,
   toggleSyncPanel,
   toggleTheme,
+  unarchiveFoodPreset,
   verifyCode
 });
 
