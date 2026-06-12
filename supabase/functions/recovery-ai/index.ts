@@ -19,6 +19,7 @@ type AiRequest = {
   question?: string;
   entryId?: string;
   foodMap?: unknown;
+  chatHistory?: unknown;
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -144,21 +145,31 @@ function buildPrompt(
   focusEntries: RecoveryEntry[],
   historyEntries: RecoveryEntry[],
   foodMap: unknown,
+  chatHistory: unknown,
   question?: string,
   entryId?: string
 ) {
   const selectedEntry = entryId ? focusEntries.find(entry => entry.id === entryId) : undefined;
   const task = mode === "entry"
-    ? "Give feedback on the selected log entry, using recent history to explain why it matters and what extra detail might be useful."
+    ? "Give feedback on the selected log entry, using recent history to explain why it matters and what extra detail might be useful. Preserve entry insight behavior."
     : mode === "question"
-      ? "Answer the user's question using today's log and recent history."
-      : "Create a daily recovery summary using today's log and recent history.";
+      ? "Answer the user's chat question. Use Mohamed's logs when relevant, and otherwise answer general educational recovery questions using Claude's general knowledge."
+      : "Create a practical daily recovery insight using today's log and recent 3-7 day history.";
 
-  return `You are RecoveryLog AI, a cautious post-procedure recovery log assistant for a patient and caregiver.
+  return `You are Recovery AI, a Claude-powered assistant inside Mohamed's recovery log.
+
+Scope:
+- You can answer questions about Mohamed's logs.
+- You can answer general educational recovery questions using Claude's general knowledge.
+- You can help prepare doctor questions.
+- You can explain recovery terms in plain English.
+- You do not have live web access. Do not say you checked the web, current sources, or the latest guidance.
 
 Important safety rules:
 - Do not diagnose.
+- Do not prescribe.
 - Do not change medication instructions.
+- Do not make treatment decisions.
 - Do not say something is safe, normal, typical, or expected.
 - Do not reassure about incision healing or symptoms. Say what was logged and what to monitor.
 - Give practical, cautious guidance only.
@@ -171,6 +182,27 @@ Important safety rules:
 - For food insights, mention bowel movement count, loose/urgent bowel movements, symptoms after the food, and evidence strength when provided.
 - If the data is missing or unclear, say what should be logged next time.
 - If there is not enough data to infer a pattern, say that clearly.
+- For general questions, start with "In general..." and say it is general information, not a diagnosis.
+- For log-aware questions, start with "Based on your logs..." or "From the entries you recorded..." when using logged data.
+- Use phrases such as "may be worth watching", "a possible pattern", "not enough data yet", and "bring this up with your care team if it continues."
+- Avoid saying a food caused, triggered, or was responsible for symptoms or bowel changes.
+- If asked for urgent triage, medication changes, or medical decisions, stay cautious and recommend contacting the care team.
+
+Daily summary requirements when mode is day:
+1. Today in plain English.
+2. What changed from recent days.
+3. Food/BM pattern signals.
+4. What to watch next.
+5. What to log better tomorrow.
+6. Worth mentioning to your doctor, if any.
+7. Safety note.
+
+Chat answer style when mode is question:
+- Direct answer first.
+- Then explain whether the answer is based on logs or general information.
+- Include uncertainty when relevant.
+- Give practical next steps for logging or monitoring.
+- Avoid long generic essays.
 
 Task: ${task}
 Focus date range: ${start} to ${end}
@@ -185,6 +217,9 @@ ${JSON.stringify(compactLog(focusEntries), null, 2)}
 Recent history before focus range:
 ${JSON.stringify(compactLog(historyEntries), null, 2)}
 
+Recent chat history in this app session:
+${JSON.stringify(chatHistory || [], null, 2)}
+
 Food Map summary from the app:
 ${JSON.stringify(foodMap || [], null, 2)}
 
@@ -193,6 +228,13 @@ Return only valid JSON with exactly these keys:
   "status": "one short phrase, e.g. Stable log, Watch closely, Needs more detail",
   "answer": "direct answer when the mode is question, otherwise empty string",
   "summary": "2-4 short sentences summarizing the day, entry, or pattern",
+  "today_plain": "plain English daily summary, or empty string when not mode day",
+  "changed_from_recent_days": ["0-4 changes compared with recent days"],
+  "food_bm_signals": ["0-4 Food Map, confirmed food links, bowel movement, Bristol, urgency, gas, or symptom signals"],
+  "watch_next": ["0-4 practical things to monitor next"],
+  "log_better_tomorrow": ["0-4 concrete logging improvements"],
+  "doctor_note": ["0-4 points worth mentioning to the doctor or care team"],
+  "safety_note": "one cautious safety note, never a diagnosis",
   "insights": ["2-5 pattern-based observations that use today and recent history"],
   "guidance": ["3-5 practical bullets for what to keep doing, monitoring, or logging"],
   "log_quality": ["0-4 missing details or logging improvements"],
@@ -247,7 +289,7 @@ async function callClaude(prompt: string) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1100,
+      max_tokens: 1500,
       temperature: 0.2,
       messages: [
         {
@@ -287,6 +329,14 @@ Deno.serve(async req => {
     const end = validDateKey(body.end) ? body.end : start;
     const question = typeof body.question === "string" ? body.question.trim().slice(0, 600) : "";
     const entryId = typeof body.entryId === "string" ? body.entryId.trim().slice(0, 120) : "";
+    const chatHistory = Array.isArray(body.chatHistory)
+      ? body.chatHistory.slice(-8).map((message) => {
+        if (!message || typeof message !== "object") return null;
+        const item = message as Record<string, unknown>;
+        const role = text(item.role) === "user" ? "user" : "assistant";
+        return { role, content: text(item.content).slice(0, 900) };
+      }).filter(Boolean)
+      : [];
 
     if (!start || !end) return jsonResponse({ error: "A valid start and end date are required." }, 400);
     if (mode === "question" && !question) return jsonResponse({ error: "Ask a question first." }, 400);
@@ -299,14 +349,14 @@ Deno.serve(async req => {
     const focusEntries = entries.filter(entry => entry.date_key >= orderedStart && entry.date_key <= orderedEnd);
     const historyEntries = entries.filter(entry => entry.date_key < orderedStart);
 
-    if (!focusEntries.length) {
+    if (!focusEntries.length && mode !== "question") {
       return jsonResponse({ error: "No logged entries found for that date range." }, 404);
     }
     if (mode === "entry" && !focusEntries.some(entry => entry.id === entryId)) {
       return jsonResponse({ error: "That entry was not found in the selected day." }, 404);
     }
 
-    const text = await callClaude(buildPrompt(mode, orderedStart, orderedEnd, focusEntries, historyEntries, body.foodMap || [], question, entryId));
+    const text = await callClaude(buildPrompt(mode, orderedStart, orderedEnd, focusEntries, historyEntries, body.foodMap || [], chatHistory, question, entryId));
     let parsed: unknown;
     try {
       parsed = parseClaudeJson(text);
@@ -315,6 +365,13 @@ Deno.serve(async req => {
         status: "Summary generated",
         answer: "",
         summary: text,
+        today_plain: "",
+        changed_from_recent_days: [],
+        food_bm_signals: [],
+        watch_next: [],
+        log_better_tomorrow: [],
+        doctor_note: [],
+        safety_note: "",
         insights: [],
         guidance: [],
         log_quality: [],

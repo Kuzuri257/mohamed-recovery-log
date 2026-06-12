@@ -9,6 +9,7 @@ const DELETED_STORAGE_KEY = 'recovery-log-deleted-v1';
 const FOOD_LIBRARY_STORAGE_KEY = 'recovery-log-food-library-v21';
 const FOOD_LIBRARY_SEEDED_KEY = 'recovery-log-food-library-seeded-v21';
 const THEME_STORAGE_KEY = 'recovery-log-theme';
+const RECOVERY_AI_CHAT_STORAGE_KEY = 'recovery-log-ai-chat-v21-1';
 const MED_PRESETS = [
   { name: 'Paracetamol', dose: '500mg' },
   { name: 'Imodium', dose: '1 tablet' },
@@ -512,6 +513,73 @@ function renderAIList(title, items) {
   `;
 }
 
+const AI_PROMPT_CHIPS = [
+  'What changed today?',
+  'Do you see any food pattern?',
+  'Was today better or worse?',
+  'What should I log tomorrow?',
+  'What should I tell my doctor?',
+  'Explain Bristol type 6',
+  'What are gentle foods?',
+  'What does bloating mean?',
+  'How does hydration affect BM?',
+  'What questions should I ask my doctor?'
+];
+
+const AI_FOLLOW_UP_CHIPS = ['Why?', 'What should I watch?', 'Any food pattern?', 'Doctor note?'];
+
+function loadAIChatHistory() {
+  try {
+    const raw = localStorage.getItem(RECOVERY_AI_CHAT_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.slice(-12) : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function saveAIChatHistory(history) {
+  try {
+    localStorage.setItem(RECOVERY_AI_CHAT_STORAGE_KEY, JSON.stringify((history || []).slice(-12)));
+  } catch(e) {}
+}
+
+function renderAIChat() {
+  const chips = document.getElementById('aiPromptChips');
+  if (chips) {
+    chips.innerHTML = AI_PROMPT_CHIPS.map(prompt =>
+      `<button class="ai-prompt-chip" onclick="askAIFromChip('${escapeHTML(prompt)}')">${escapeHTML(prompt)}</button>`
+    ).join('');
+  }
+  const thread = document.getElementById('aiChatThread');
+  if (!thread) return;
+  const history = loadAIChatHistory();
+  thread.innerHTML = history.length
+    ? history.map(message => `
+      <div class="ai-message ${message.role === 'user' ? 'user' : 'assistant'}">
+        <div class="ai-message-role">${message.role === 'user' ? 'You' : 'Recovery AI'}</div>
+        <div class="ai-message-text">${escapeHTML(message.content || '')}</div>
+      </div>
+    `).join('')
+    : `<div class="ai-message assistant"><div class="ai-message-role">Recovery AI</div><div class="ai-message-text">Ask a question about your logs or a general recovery concept. I can use your recent entries when they are relevant.</div></div>`;
+}
+
+function addAIChatMessage(role, content) {
+  const history = loadAIChatHistory();
+  history.push({ role, content, at: new Date().toISOString() });
+  saveAIChatHistory(history);
+  renderAIChat();
+}
+
+function aiSummarySection(title, value) {
+  if (Array.isArray(value)) {
+    if (!value.length) return '';
+    return `<div class="ai-summary-section"><strong>${escapeHTML(title)}</strong><div>${value.map(item => escapeHTML(item)).join('<br>')}</div></div>`;
+  }
+  if (!value) return '';
+  return `<div class="ai-summary-section"><strong>${escapeHTML(title)}</strong><div>${escapeHTML(value)}</div></div>`;
+}
+
 function setAIButtonLoading(isLoading) {
   const summaryBtn = document.getElementById('aiSummaryBtn');
   const askBtn = document.getElementById('aiAskBtn');
@@ -532,6 +600,15 @@ function showAISummary(result, targetId = 'aiSummaryResult') {
   const target = document.getElementById(targetId);
   if (!target) return;
   const data = result || {};
+  const sections = [
+    aiSummarySection('Today in plain English', data.today_plain || data.summary),
+    aiSummarySection('What changed from recent days', data.changed_from_recent_days),
+    aiSummarySection('Food/BM pattern signals', data.food_bm_signals || data.insights),
+    aiSummarySection('What to watch next', data.watch_next || data.guidance),
+    aiSummarySection('What to log better tomorrow', data.log_better_tomorrow || data.log_quality),
+    aiSummarySection('Worth mentioning to your doctor', data.doctor_note || data.doctor_questions),
+    aiSummarySection('Safety note', data.safety_note || data.red_flags)
+  ].filter(Boolean).join('');
   const detailHTML = [
     renderAIList('Insights', data.insights),
     renderAIList('Guidance', data.guidance),
@@ -544,13 +621,24 @@ function showAISummary(result, targetId = 'aiSummaryResult') {
     <div class="ai-result">
       <div class="ai-status-pill">${escapeHTML(data.status || 'Summary')}</div>
       ${data.answer ? `<div class="ai-summary-text">${escapeHTML(data.answer)}</div>` : ''}
-      <div class="ai-summary-text">${escapeHTML(data.summary || 'No summary returned.')}</div>
+      ${sections ? `<div class="ai-summary-sections">${sections}</div>` : `<div class="ai-summary-text">${escapeHTML(data.summary || 'No summary returned.')}</div>`}
+      <div class="ai-chip-row">${AI_FOLLOW_UP_CHIPS.map(prompt => `<button class="ai-prompt-chip" onclick="askAIFromChip('${escapeHTML(prompt)}')">${escapeHTML(prompt)}</button>`).join('')}</div>
       ${detailHTML ? `<details class="ai-detail"><summary>Show details</summary>${detailHTML}</details>` : ''}
     </div>
   `;
 }
 
-async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is reading today’s log and recent history...', targetId = 'aiSummaryResult') {
+function aiResponseText(result) {
+  const data = result || {};
+  return [
+    data.answer || data.summary || '',
+    Array.isArray(data.insights) && data.insights.length ? `\nWhat I notice:\n- ${data.insights.join('\n- ')}` : '',
+    Array.isArray(data.guidance) && data.guidance.length ? `\nNext steps:\n- ${data.guidance.join('\n- ')}` : '',
+    data.safety_note ? `\nSafety note: ${data.safety_note}` : ''
+  ].filter(Boolean).join('\n');
+}
+
+async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is reading today’s log and recent history...', targetId = 'aiSummaryResult', renderResult = true) {
   if (!supabaseClient) {
     showAIError('Cloud sync is not configured yet.', targetId);
     return null;
@@ -561,7 +649,7 @@ async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is r
     return null;
   }
   const entries = allDays[currentDay] || [];
-  if (!entries.length) {
+  if (!entries.length && mode !== 'question') {
     showAIError('Add at least one entry for this day before asking Claude.', targetId);
     return null;
   }
@@ -576,6 +664,7 @@ async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is r
         mode,
         start: currentDay,
         end: currentDay,
+        chatHistory: loadAIChatHistory().slice(-8),
         foodMap: foodMap.cards.slice(0, 12).map(card => ({
           food: card.name,
           food_type: card.foodType,
@@ -595,7 +684,11 @@ async function runRecoveryAI(mode, extraBody = {}, loadingMessage = 'Claude is r
     });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
-    showAISummary(data?.result, targetId);
+    if (renderResult) showAISummary(data?.result, targetId);
+    else {
+      const target = document.getElementById(targetId);
+      if (target) target.innerHTML = '';
+    }
     return data?.result || null;
   } catch(e) {
     showAIError(`AI summary failed: ${e.message || e}`, targetId);
@@ -613,10 +706,31 @@ async function askAIQuestion() {
   const input = document.getElementById('aiQuestion');
   const question = (input?.value || '').trim();
   if (!question) {
-    showAIError('Type a question first.');
+    showAIError('Type a question first.', 'aiSummaryResult');
     return;
   }
-  await runRecoveryAI('question', { question }, 'Claude is checking today against recent history...');
+  if (input) input.value = '';
+  addAIChatMessage('user', question);
+  const result = await runRecoveryAI('question', { question }, 'Recovery AI is thinking...', 'aiChatStatus', false);
+  if (result) addAIChatMessage('assistant', aiResponseText(result));
+}
+
+async function askAIFromChip(question) {
+  const input = document.getElementById('aiQuestion');
+  if (input) input.value = question || '';
+  await askAIQuestion();
+}
+
+function setupAIChatInput() {
+  const input = document.getElementById('aiQuestion');
+  if (!input || input.dataset.bound === 'true') return;
+  input.dataset.bound = 'true';
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      askAIQuestion();
+    }
+  });
 }
 
 async function generateEntryInsight(button) {
@@ -851,6 +965,7 @@ function renderAll() {
   renderStoolChart();
   renderFoodMap();
   renderFoodLibrary();
+  renderAIChat();
   document.getElementById('headerDate').textContent = formatFullDate(currentDay);
   document.getElementById('dayBadge').textContent = 'Day ' + dayNumber(currentDay);
 }
@@ -3583,6 +3698,7 @@ Object.assign(window, {
   addNewDay,
   adjustPortionCount,
   archiveFoodPreset,
+  askAIFromChip,
   askAIQuestion,
   clearRecentFoodLinks,
   closeModal,
@@ -3627,5 +3743,6 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 applyTheme(currentTheme(), false);
+setupAIChatInput();
 load();
 initSupabaseSync();

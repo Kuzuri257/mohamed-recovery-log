@@ -543,17 +543,86 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
   }
 
   .ai-question-row {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 8px;
+    margin-top: 8px;
   }
 
   .ai-question-row .form-input {
     min-width: 0;
+  }
+
+  .ai-chat-title {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 800;
+    margin-top: 10px;
+  }
+
+  .ai-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .ai-prompt-chip {
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--cream);
+    color: var(--ink);
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    min-height: 36px;
+    padding: 7px 10px;
+  }
+
+  .ai-chat-thread {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .ai-message {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 9px 10px;
+    max-width: 92%;
+  }
+
+  .ai-message.user {
+    justify-self: end;
+    background: var(--accent-teal);
+    border-color: var(--accent-teal);
+    color: white;
+  }
+
+  .ai-message.assistant {
+    justify-self: start;
+    background: var(--cream);
+    color: var(--ink);
+  }
+
+  .ai-message-role {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    opacity: 0.75;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .ai-message-text {
+    font-size: 13px;
+    line-height: 1.48;
+    white-space: pre-wrap;
   }
 
   .ai-result {
@@ -580,6 +649,32 @@
     font-size: 13px;
     line-height: 1.5;
     margin-bottom: 10px;
+  }
+
+  .ai-summary-sections {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .ai-summary-section {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--cream);
+    padding: 9px 10px;
+  }
+
+  .ai-summary-section strong {
+    display: block;
+    color: var(--ink);
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+
+  .ai-summary-section div {
+    color: var(--ink-light);
+    font-size: 12px;
+    line-height: 1.45;
   }
 
   .ai-detail {
@@ -2214,19 +2309,23 @@
   <div class="ai-panel">
     <div class="ai-panel-header">
       <div>
-        <div class="ai-panel-title">Recovery AI</div>
-        <p class="ai-panel-copy">Uses today’s log plus recent history for summaries, questions, and entry feedback.</p>
-        <p class="ai-disclaimer">Recovery AI summarizes your logs and suggests what to monitor. It does not diagnose, decide treatment, or replace your doctor’s instructions.</p>
+        <div class="ai-panel-title">Recovery AI Chat</div>
+        <p class="ai-panel-copy">Ask about your logs, food patterns, symptoms, recovery questions, or what to discuss with your doctor.</p>
+        <p class="ai-disclaimer">Recovery AI can help explain your logs and general recovery concepts, but it does not diagnose, decide treatment, or replace your doctor’s instructions.</p>
       </div>
     </div>
     <div class="ai-actions">
       <button class="tool-btn primary" id="aiSummaryBtn" onclick="generateAISummary()">Summarize today</button>
     </div>
-    <div class="ai-question-row">
-      <input class="form-input" id="aiQuestion" type="text" placeholder="Ask AI about today...">
-      <button class="tool-btn" id="aiAskBtn" onclick="askAIQuestion()">Ask</button>
-    </div>
     <div id="aiSummaryResult"></div>
+    <div class="ai-chat-title">Suggested questions</div>
+    <div class="ai-chip-row" id="aiPromptChips"></div>
+    <div id="aiChatStatus"></div>
+    <div class="ai-chat-thread" id="aiChatThread"></div>
+    <div class="ai-question-row">
+      <input class="form-input" id="aiQuestion" type="text" placeholder="Ask Recovery AI...">
+      <button class="tool-btn" id="aiAskBtn" onclick="askAIQuestion()">Send</button>
+    </div>
   </div>
   <div class="timeline" id="timeline">
     <div class="empty-state" id="emptyState">
